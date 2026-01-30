@@ -64,7 +64,19 @@ function getCacheBustedImageUrl(imageUrl, updateTime) {
 // Load products from Firestore (synced across devices)
 async function loadInventoryFromFirebase() {
     try {
-        // First try to load from localStorage (fastest, always available)
+        // Try Firestore FIRST (no auth required for read)
+        if (window.db) {
+            console.log('🔄 Attempting to load products from Firestore (no auth required)...');
+            const products = await getProductsFromFirestore();
+            if (products && products.length > 0) {
+                inventory = products;
+                localStorage.setItem('africhic-products', JSON.stringify(products));
+                console.log('✓ Loaded products from Firestore:', inventory.length, 'products');
+                return;
+            }
+        }
+        
+        // If Firestore empty or not available, try localStorage
         const storedProducts = localStorage.getItem('africhic-products');
         
         if (storedProducts) {
@@ -72,50 +84,26 @@ async function loadInventoryFromFirebase() {
                 inventory = JSON.parse(storedProducts);
                 console.log('✓ Loaded products from localStorage:', inventory.length, 'products');
                 
-                // Also sync from Firestore in background if available (always try for updates)
+                // Still try to sync from Firestore in background for updates
                 if (window.db) {
-                    console.log('ℹ Attempting to sync from Firestore for updated products...');
+                    console.log('ℹ Syncing from Firestore in background for updates...');
                     syncProductsFromFirestore();
-                } else {
-                    console.log('ℹ Firestore not available, using localStorage products');
                 }
                 return;
             } catch (e) {
                 console.error('Error parsing stored products:', e);
-                // Fall through to load from Firestore or defaults
             }
         }
 
-        // If no localStorage, try Firestore (regardless of auth status)
-        console.log('ℹ No products in localStorage, attempting to load from Firestore...');
-        if (window.db) {
-            const products = await getProductsFromFirestore();
-            if (products && products.length > 0) {
-                inventory = products;
-                localStorage.setItem('africhic-products', JSON.stringify(products));
-                console.log('✓ Loaded products from Firestore:', inventory.length, 'products');
-                return;
-            } else {
-                console.log('⚠ No products found in Firestore, using defaults');
-            }
-        } else {
-            console.log('ℹ Firestore not available, using products from localStorage');
-        }
-
-        // If no stored products and Firestore not available, show empty
-        // Only show admin-loaded products, no defaults
-        if (inventory.length === 0) {
-            console.log('⚠ No products available - waiting for admin to add products');
-            inventory = [];
-            localStorage.setItem('africhic-products', JSON.stringify([]));
-        }
+        // If nothing works, show empty
+        console.log('⚠ No products available');
+        inventory = [];
+        localStorage.setItem('africhic-products', JSON.stringify([]));
 
     } catch (error) {
         console.error("Error loading products:", error);
-        // Show empty instead of defaults - only admin products
         inventory = [];
         localStorage.setItem('africhic-products', JSON.stringify([]));
-        console.log('⚠ Error loading products - showing empty inventory (only admin products allowed)');
     }
 }
 
@@ -185,6 +173,41 @@ function syncProductsFromFirestore() {
 
 // Listen for real-time product updates from admin panel
 if (typeof window !== 'undefined') {
+    // Try to establish Firestore listener immediately when db becomes available
+    let firebaseCheckInterval = setInterval(() => {
+        if (window.db && !window.productsRealtimeListenerActive) {
+            clearInterval(firebaseCheckInterval);
+            console.log('🔄 Establishing Firestore real-time listener for products...');
+            window.productsRealtimeListenerActive = true;
+            
+            window.db.collection('products').onSnapshot(
+                (snapshot) => {
+                    const products = [];
+                    snapshot.forEach(doc => {
+                        products.push({
+                            id: doc.id,
+                            ...doc.data()
+                        });
+                    });
+                    
+                    if (products.length > 0) {
+                        inventory = products;
+                        localStorage.setItem('africhic-products', JSON.stringify(products));
+                        console.log('✓ Real-time products sync from Firestore:', products.length);
+                        
+                        // Trigger display update if function exists
+                        if (typeof displayProducts === 'function') {
+                            displayProducts();
+                        }
+                    }
+                },
+                (error) => {
+                    console.log('ℹ Products listener ready (waiting for data):', error.message);
+                }
+            );
+        }
+    }, 500);
+    
     window.addEventListener('productsUpdated', function(e) {
         if (e.detail && e.detail.products) {
             inventory = e.detail.products;
@@ -216,12 +239,15 @@ if (typeof window !== 'undefined') {
         setTimeout(() => {
             // Try using window.db directly
             if (window.db) {
-                console.log('Establishing real-time listener on window.db...');
+                console.log('🔄 Establishing real-time listener on window.db for products...');
                 window.db.collection('products').onSnapshot(
                     (snapshot) => {
                         const products = [];
                         snapshot.forEach(doc => {
-                            products.push(doc.data());
+                            products.push({
+                                id: doc.id,
+                                ...doc.data()
+                            });
                         });
                         
                         if (products.length > 0) {

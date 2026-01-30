@@ -1135,7 +1135,7 @@
             }
         }
 
-        // Sync products to Firestore
+        // Sync products to Firestore (ROOT LEVEL for public access)
         async function syncProductsToCloud() {
             if (!window.syncEnabled || !window.db || !window.currentAdminUser) {
                 console.log('[CloudSync] Sync disabled or not authenticated');
@@ -1143,9 +1143,9 @@
             }
 
             try {
-                console.log('[CloudSync] Syncing products to Firestore...');
-                const productsRef = window.db.collection('stores').doc(window.currentAdminUser.email)
-                    .collection('products');
+                console.log('[CloudSync] Syncing products to Firestore (root products collection)...');
+                // Save to ROOT products collection so customers can access without auth
+                const productsRef = window.db.collection('products');
 
                 // Batch write for efficiency
                 const batch = window.db.batch();
@@ -1156,11 +1156,17 @@
                         ...product,
                         updatedAt: new Date().toISOString(),
                         updatedBy: window.currentAdminUser.email
-                    });
+                    }, { merge: true });
                 }
 
                 await batch.commit();
-                console.log('[CloudSync] ✓ Products synced to Firestore');
+                console.log('[CloudSync] ✓ Products synced to Firestore (root collection)');
+                
+                // Also trigger real-time update for all connected clients
+                window.dispatchEvent(new CustomEvent('productsUpdated', {
+                    detail: { products: allProducts }
+                }));
+                
                 return true;
             } catch (error) {
                 console.error('[CloudSync] Product sync failed:', error.message);
@@ -1653,12 +1659,17 @@
             const config = JSON.parse(localStorage.getItem('africhic-homepage-config')) || getDefaultHomepageConfig();
             localStorage.setItem('africhic-homepage-config', JSON.stringify(config));
             
-            // Sync to cloud
+            // Sync to cloud (ROOT LEVEL for public access)
             if (window.syncEnabled && window.db && window.currentAdminUser) {
                 try {
-                    window.db.collection('stores').doc(window.currentAdminUser.email)
-                        .collection('config').doc('homepage').set(config);
-                    console.log('[CloudSync] ✓ Categories synced');
+                    // Save to root config collection so all clients can access
+                    window.db.collection('config').doc('homepage').set(config, { merge: true });
+                    console.log('[CloudSync] ✓ Categories synced to root config collection');
+                    
+                    // Trigger real-time update
+                    window.dispatchEvent(new CustomEvent('homepageConfigUpdated', {
+                        detail: { config: config }
+                    }));
                 } catch (error) {
                     console.error('[CloudSync] Category sync failed:', error.message);
                 }

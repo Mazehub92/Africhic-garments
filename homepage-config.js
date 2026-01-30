@@ -283,6 +283,68 @@ function initializeHomepage() {
     applyLatestArrivals(config);
     applyNewArrivals(config);
     applyTrending(config);
+    
+    // Try to load from Firestore and set up real-time listeners
+    setupHomepageRealtimeSync();
+}
+
+// Set up real-time sync for homepage config and products
+function setupHomepageRealtimeSync() {
+    // Wait for Firebase to be ready
+    if (typeof window !== 'undefined') {
+        const checkFirebase = setInterval(() => {
+            if (window.db) {
+                clearInterval(checkFirebase);
+                console.log('🔄 Setting up real-time homepage sync...');
+                
+                // Listen to homepage config in real-time
+                try {
+                    window.db.collection('config').doc('homepage').onSnapshot(
+                        (doc) => {
+                            if (doc.exists) {
+                                const config = doc.data();
+                                localStorage.setItem('africhic-homepage-config', JSON.stringify(config));
+                                console.log('✓ Homepage config synced from Firestore');
+                                // Re-initialize with new config
+                                setTimeout(initializeHomepage, 100);
+                            }
+                        },
+                        (error) => {
+                            console.log('ℹ Config real-time listener note:', error.message);
+                        }
+                    );
+                } catch (error) {
+                    console.log('ℹ Could not set up config listener:', error.message);
+                }
+                
+                // Listen to products in real-time
+                try {
+                    window.db.collection('products').onSnapshot(
+                        (snapshot) => {
+                            const products = [];
+                            snapshot.forEach(doc => {
+                                products.push({
+                                    id: doc.id,
+                                    ...doc.data()
+                                });
+                            });
+                            if (products.length > 0) {
+                                localStorage.setItem('africhic-products', JSON.stringify(products));
+                                console.log('✓ Products synced from Firestore:', products.length);
+                                // Re-initialize to update product sections
+                                setTimeout(initializeHomepage, 100);
+                            }
+                        },
+                        (error) => {
+                            console.log('ℹ Products real-time listener note:', error.message);
+                        }
+                    );
+                } catch (error) {
+                    console.log('ℹ Could not set up products listener:', error.message);
+                }
+            }
+        }, 500);
+    }
 }
 
 // Run initialization when DOM is ready
