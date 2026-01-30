@@ -506,6 +506,10 @@
     </footer>
     <script src="products.js"></script>
     <script>
+        // INITIALIZE PRODUCTS REAL-TIME SYNC IMMEDIATELY
+        console.log('🛍️ Shop page initializing real-time product sync...');
+        setupProductRealTimeListener();
+        
         const container = document.getElementById('product-container');
         let currentFilter = 'all';
         let allProducts = [];

@@ -46,47 +46,86 @@ const defaultInventory = [
 
 let inventory = [];
 
-// Helper function to get cache-busted image URL
-function getCacheBustedImageUrl(imageUrl, updateTime) {
-    if (!imageUrl) return null;
-    
-    // If it's a data URI (base64), return as-is (no cache needed)
-    if (imageUrl.startsWith('data:')) {
-        return imageUrl;
-    }
-    
-    // For regular URLs, add cache-buster based on update time
-    const separator = imageUrl.includes('?') ? '&' : '?';
-    const timestamp = updateTime ? new Date(updateTime).getTime() : Date.now();
-    return `${imageUrl}${separator}v=${timestamp}`;
+// Initialize products on script load (before DOM ready)
+console.log('📦 Products.js initializing...');
+
+// Immediately set up real-time listener for ALL pages
+function setupProductRealTimeListener() {
+    // Wait for Firebase
+    let checkCount = 0;
+    const setupInterval = setInterval(() => {
+        checkCount++;
+        if (window.db || checkCount > 30) { // 30 checks = 15 seconds max
+            clearInterval(setupInterval);
+            
+            if (!window.db) {
+                console.log('⚠ Firebase not available, will use cached products');
+                return;
+            }
+            
+            console.log('🔄 Setting up real-time products listener (immediate)...');
+            window.productsRealtimeListenerActive = true;
+            
+            // Set up real-time listener that runs for the lifetime of the page
+            window.db.collection('products').onSnapshot(
+                (snapshot) => {
+                    const products = [];
+                    snapshot.forEach(doc => {
+                        products.push({
+                            id: doc.id,
+                            ...doc.data()
+                        });
+                    });
+                    
+                    if (products.length > 0) {
+                        inventory = products;
+                        localStorage.setItem('africhic-products', JSON.stringify(products));
+                        console.log('✓ Products synced (real-time):', products.length, 'items');
+                        
+                        // Trigger UI refresh if available
+                        if (typeof displayProducts === 'function') {
+                            displayProducts();
+                        }
+                        // Also dispatch custom event for other listeners
+                        window.dispatchEvent(new CustomEvent('productsLoaded', {
+                            detail: { products: products }
+                        }));
+                    }
+                },
+                (error) => {
+                    console.log('ℹ Real-time listener ready (error):', error.message);
+                }
+            );
+        }
+    }, 500);
 }
 
 // Load products from Firestore (synced across devices)
 async function loadInventoryFromFirebase() {
     try {
-        // Try Firestore FIRST (no auth required for read)
+        console.log('🔄 Loading products for display...');
+        
+        // FIRST: Try Firestore immediately (works for all users, no auth needed)
         if (window.db) {
-            console.log('🔄 Attempting to load products from Firestore (no auth required)...');
+            console.log('ℹ Attempting Firestore load (first-time users, guests)...');
             const products = await getProductsFromFirestore();
             if (products && products.length > 0) {
                 inventory = products;
                 localStorage.setItem('africhic-products', JSON.stringify(products));
-                console.log('✓ Loaded products from Firestore:', inventory.length, 'products');
+                console.log('✓ Loaded from Firestore:', inventory.length, 'products');
                 return;
             }
         }
         
-        // If Firestore empty or not available, try localStorage
+        // SECOND: Fall back to localStorage (returning users, offline access)
         const storedProducts = localStorage.getItem('africhic-products');
-        
         if (storedProducts) {
             try {
                 inventory = JSON.parse(storedProducts);
-                console.log('✓ Loaded products from localStorage:', inventory.length, 'products');
+                console.log('✓ Loaded from localStorage:', inventory.length, 'products');
                 
-                // Still try to sync from Firestore in background for updates
+                // Still try Firestore sync in background
                 if (window.db) {
-                    console.log('ℹ Syncing from Firestore in background for updates...');
                     syncProductsFromFirestore();
                 }
                 return;
@@ -95,8 +134,8 @@ async function loadInventoryFromFirebase() {
             }
         }
 
-        // If nothing works, show empty
-        console.log('⚠ No products available');
+        // THIRD: Empty inventory (admin hasn't added products yet)
+        console.log('⚠ No products available yet - waiting for admin to add');
         inventory = [];
         localStorage.setItem('africhic-products', JSON.stringify([]));
 
