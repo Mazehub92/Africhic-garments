@@ -517,8 +517,21 @@
     <script src="homepage-config.js"></script>
     <script>
         // Initialize products sync for homepage
-        console.log('🏠 Homepage initializing real-time product sync...');
+        console.log('🏠 Homepage initializing...');
+        
+        // Register callback to re-initialize when products load
+        onProductsReady(function() {
+            console.log('✓ Products loaded on homepage, triggering UI update');
+            if (typeof initializeHomepage === 'function') {
+                initializeHomepage();
+            }
+        });
+        
+        // Start real-time sync
         setupProductRealTimeListener();
+        
+        // Load products immediately
+        loadInventoryFromFirebase();
     </script>
 </body>
 </html>

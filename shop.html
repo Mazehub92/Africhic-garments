@@ -506,9 +506,8 @@
     </footer>
     <script src="products.js"></script>
     <script>
-        // INITIALIZE PRODUCTS REAL-TIME SYNC IMMEDIATELY
-        console.log('🛍️ Shop page initializing real-time product sync...');
-        setupProductRealTimeListener();
+        // SHOP PAGE INITIALIZATION
+        console.log('🛍️ Shop page initializing...');
         
         const container = document.getElementById('product-container');
         let currentFilter = 'all';
@@ -872,7 +871,22 @@
             }
         });
 
-        displayProducts();
+        // Register callback for when products are ready
+        onProductsReady(function() {
+            console.log('✓ Products ready, triggering display');
+            displayProducts();
+        });
+        
+        // Initialize real-time sync
+        setupProductRealTimeListener();
+        
+        // Load products immediately
+        loadInventoryFromFirebase().then(success => {
+            if (success) {
+                displayProducts();
+            }
+        });
+        
         updateCartCount();
 
         // ==================== IMAGE LOADING & CACHE BUSTING ====================

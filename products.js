@@ -45,12 +45,28 @@ const defaultInventory = [
 ];
 
 let inventory = [];
+let realtimeListenerActive = false;
+let displayProductsCallback = null;
 
 // Initialize products on script load (before DOM ready)
 console.log('📦 Products.js initializing...');
 
+// Register callback for when products should be displayed
+function onProductsReady(callback) {
+    displayProductsCallback = callback;
+    // If inventory already loaded, call immediately
+    if (inventory.length > 0 && typeof callback === 'function') {
+        setTimeout(() => callback(inventory), 0);
+    }
+}
+
 // Immediately set up real-time listener for ALL pages
 function setupProductRealTimeListener() {
+    if (realtimeListenerActive) {
+        console.log('ℹ Real-time listener already active');
+        return;
+    }
+    
     // Wait for Firebase
     let checkCount = 0;
     const setupInterval = setInterval(() => {
@@ -60,11 +76,13 @@ function setupProductRealTimeListener() {
             
             if (!window.db) {
                 console.log('⚠ Firebase not available, will use cached products');
+                // Try to load from cache immediately
+                loadInventoryFromCache();
                 return;
             }
             
-            console.log('🔄 Setting up real-time products listener (immediate)...');
-            window.productsRealtimeListenerActive = true;
+            console.log('🔄 Setting up real-time products listener...');
+            realtimeListenerActive = true;
             
             // Set up real-time listener that runs for the lifetime of the page
             window.db.collection('products').onSnapshot(
@@ -77,43 +95,71 @@ function setupProductRealTimeListener() {
                         });
                     });
                     
+                    console.log('📦 Real-time update - Products available:', products.length);
                     if (products.length > 0) {
                         inventory = products;
                         localStorage.setItem('africhic-products', JSON.stringify(products));
-                        console.log('✓ Products synced (real-time):', products.length, 'items');
+                        console.log('✓ Inventory updated:', products.length, 'items');
                         
-                        // Trigger UI refresh if available
-                        if (typeof displayProducts === 'function') {
-                            displayProducts();
+                        // Trigger display callback if registered
+                        if (typeof displayProductsCallback === 'function') {
+                            displayProductsCallback(inventory);
                         }
-                        // Also dispatch custom event for other listeners
+                        // Also dispatch custom event
                         window.dispatchEvent(new CustomEvent('productsLoaded', {
                             detail: { products: products }
                         }));
+                    } else {
+                        console.log('⚠ No products in Firestore yet');
                     }
                 },
                 (error) => {
-                    console.log('ℹ Real-time listener ready (error):', error.message);
+                    console.log('ℹ Real-time listener error:', error.message);
                 }
             );
+            
+            // Try initial load from Firestore
+            loadInventoryFromFirebase();
         }
     }, 500);
+}
+
+// Load from cache immediately (for offline/instant access)
+function loadInventoryFromCache() {
+    const cached = localStorage.getItem('africhic-products');
+    if (cached) {
+        try {
+            inventory = JSON.parse(cached);
+            console.log('✓ Loaded from cache:', inventory.length, 'products');
+            if (typeof displayProductsCallback === 'function') {
+                displayProductsCallback(inventory);
+            }
+        } catch (e) {
+            console.error('Error loading cache:', e);
+        }
+    }
 }
 
 // Load products from Firestore (synced across devices)
 async function loadInventoryFromFirebase() {
     try {
-        console.log('🔄 Loading products for display...');
+        console.log('🔄 Loading products from Firestore...');
         
         // FIRST: Try Firestore immediately (works for all users, no auth needed)
         if (window.db) {
-            console.log('ℹ Attempting Firestore load (first-time users, guests)...');
             const products = await getProductsFromFirestore();
             if (products && products.length > 0) {
                 inventory = products;
                 localStorage.setItem('africhic-products', JSON.stringify(products));
                 console.log('✓ Loaded from Firestore:', inventory.length, 'products');
-                return;
+                
+                // Trigger callback
+                if (typeof displayProductsCallback === 'function') {
+                    displayProductsCallback(inventory);
+                }
+                return true;
+            } else {
+                console.log('⚠ No products in Firestore');
             }
         }
         
@@ -124,25 +170,25 @@ async function loadInventoryFromFirebase() {
                 inventory = JSON.parse(storedProducts);
                 console.log('✓ Loaded from localStorage:', inventory.length, 'products');
                 
-                // Still try Firestore sync in background
-                if (window.db) {
-                    syncProductsFromFirestore();
+                // Trigger callback
+                if (typeof displayProductsCallback === 'function') {
+                    displayProductsCallback(inventory);
                 }
-                return;
+                return true;
             } catch (e) {
                 console.error('Error parsing stored products:', e);
             }
         }
 
         // THIRD: Empty inventory (admin hasn't added products yet)
-        console.log('⚠ No products available yet - waiting for admin to add');
+        console.log('⚠ No products available');
         inventory = [];
-        localStorage.setItem('africhic-products', JSON.stringify([]));
+        return false;
 
     } catch (error) {
         console.error("Error loading products:", error);
         inventory = [];
-        localStorage.setItem('africhic-products', JSON.stringify([]));
+        return false;
     }
 }
 
