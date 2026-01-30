@@ -1,6 +1,7 @@
 // Product Sync Manager
 // Ensures product updates are instantly synchronized across all stores and devices
 // Handles add, edit, delete operations with real-time propagation
+// Works for both guests and logged-in users
 
 class ProductSyncManager {
     constructor() {
@@ -8,13 +9,20 @@ class ProductSyncManager {
         this.isInitialized = false;
         this.db = null;
         this.syncChannel = null;
+        this.firestoreUnsubscribe = null;
+        this.lastSyncTime = localStorage.getItem('lastProductSyncTime') || null;
+        this.syncRetryCount = 0;
+        this.maxRetries = 3;
+        this.retryDelay = 2000;
         
         this.init();
     }
 
     async init() {
+        console.log('🔄 ProductSyncManager initializing...');
+        
         // Wait for Firebase to be ready
-        await this.waitForFirebase();
+        const firebaseReady = await this.waitForFirebase();
         
         if (!window.db) {
             console.warn('⚠️ Firebase not available, falling back to localStorage sync');
@@ -30,8 +38,11 @@ class ProductSyncManager {
         // Initialize BroadcastChannel for same-domain cross-tab communication
         this.initializeBroadcastChannel();
         
+        // Start periodic sync check
+        this.startPeriodicSync();
+        
         this.isInitialized = true;
-        console.log('✓ ProductSyncManager initialized');
+        console.log('✓ ProductSyncManager initialized (Firebase ready: ' + (firebaseReady ? 'Yes' : 'No') + ')');
     }
 
     async waitForFirebase(timeout = 10000) {
@@ -39,15 +50,61 @@ class ProductSyncManager {
         while (!window.db && (Date.now() - startTime) < timeout) {
             await new Promise(r => setTimeout(r, 100));
         }
+        
+        if (window.db) {
+            console.log('✓ Firebase ready for product syncing');
+        } else {
+            console.log('⏱️ Firebase initialization timeout - will use cache');
+        }
         return window.db ? true : false;
     }
 
+    // Start periodic sync to ensure products stay fresh
+    startPeriodicSync() {
+        setInterval(() => {
+            this.forceSync();
+        }, 30000); // Sync every 30 seconds
+        console.log('✓ Periodic sync started (every 30 seconds)');
+    }
+
+    // Force a complete sync from Firestore
+    async forceSync() {
+        if (!this.db) return;
+        
+        try {
+            const snapshot = await this.db.collection('products').get();
+            const products = [];
+            
+            snapshot.forEach(doc => {
+                products.push({
+                    id: doc.id,
+                    ...doc.data()
+                });
+            });
+            
+            if (products.length > 0) {
+                localStorage.setItem('africhic-products', JSON.stringify(products));
+                this.lastSyncTime = new Date().toISOString();
+                localStorage.setItem('lastProductSyncTime', this.lastSyncTime);
+                this.notifyListeners(products);
+                console.log('✓ Periodic sync complete:', products.length, 'products');
+            }
+        } catch (error) {
+            console.error('Periodic sync failed:', error.message);
+        }
+    }
+
     // Initialize Firestore real-time listener for products
+    // Works for guests (no auth required - public read access)
     initializeFirestoreSync() {
         if (!this.db) return;
 
         try {
+            console.log('📡 Setting up Firestore real-time listener for ALL users (guests + logged-in)...');
+            
+            // Real-time listener - works for all users with internet access
             this.firestoreUnsubscribe = this.db.collection('products')
+                .orderBy('updatedAt', 'desc')
                 .onSnapshot(
                     (snapshot) => {
                         const products = [];
@@ -60,25 +117,44 @@ class ProductSyncManager {
                         
                         console.log('🔄 Real-time product update from Firestore:', products.length, 'products');
                         
-                        // Update localStorage
+                        // Update localStorage (works for offline access)
                         localStorage.setItem('africhic-products', JSON.stringify(products));
+                        this.lastSyncTime = new Date().toISOString();
+                        localStorage.setItem('lastProductSyncTime', this.lastSyncTime);
                         
-                        // Notify all listeners
+                        // Notify all listeners (for all pages)
                         this.notifyListeners(products);
                         
-                        // Broadcast to other tabs
+                        // Broadcast to other tabs (for multi-tab support)
                         this.broadcastToTabs({
                             type: 'PRODUCTS_UPDATED',
                             products: products,
-                            timestamp: Date.now()
+                            timestamp: Date.now(),
+                            totalProducts: products.length
                         });
+                        
+                        // Dispatch global event
+                        window.dispatchEvent(new CustomEvent('productsSync', {
+                            detail: { products, count: products.length }
+                        }));
                     },
                     (error) => {
                         console.error('❌ Firestore listener error:', error.message);
+                        this.syncRetryCount++;
+                        
+                        if (this.syncRetryCount < this.maxRetries) {
+                            console.log(`⏳ Retrying Firestore connection (attempt ${this.syncRetryCount}/${this.maxRetries})...`);
+                            setTimeout(() => {
+                                this.initializeFirestoreSync();
+                            }, this.retryDelay);
+                        } else {
+                            console.log('⚠️ Firestore connection failed after retries, using localStorage');
+                        }
                     }
                 );
             
-            console.log('✓ Firestore real-time listener initialized for products');
+            this.syncRetryCount = 0; // Reset on successful connection
+            console.log('✓ Real-time Firestore listener ready for ALL users');
         } catch (error) {
             console.error('Error initializing Firestore listener:', error);
         }
@@ -310,6 +386,45 @@ class ProductSyncManager {
         }
         this.listeners = [];
         console.log('✓ ProductSyncManager destroyed');
+    }
+
+    // Get all products (for guests and logged-in users)
+    getAllProducts() {
+        const cached = localStorage.getItem('africhic-products');
+        return cached ? JSON.parse(cached) : [];
+    }
+
+    // Get products by category
+    getProductsByCategory(category) {
+        const all = this.getAllProducts();
+        if (category === 'all') return all;
+        return all.filter(p => p.category === category);
+    }
+
+    // Get single product
+    getProduct(productId) {
+        const all = this.getAllProducts();
+        return all.find(p => p.id === productId) || null;
+    }
+
+    // Get all categories from products
+    getCategories() {
+        const all = this.getAllProducts();
+        const categories = new Set();
+        all.forEach(p => {
+            if (p.category) categories.add(p.category);
+        });
+        return Array.from(categories);
+    }
+
+    // Get sync status
+    getSyncStatus() {
+        return {
+            isOnline: navigator.onLine,
+            lastSync: this.lastSyncTime,
+            totalProducts: this.getAllProducts().length,
+            categories: this.getCategories().length
+        };
     }
 }
 

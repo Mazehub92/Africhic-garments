@@ -24,32 +24,51 @@
 </head>
 <body class="bg-gray-100">
 
-    <nav class="bg-white shadow-md">
+    <nav class="bg-white shadow-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
             <h1 class="text-2xl font-bold text-brand-gold">AFRICHIC ADMIN</h1>
-            <div class="space-x-4">
+            <div class="flex items-center space-x-4">
+                <button onclick="syncAllProductsToStore()" class="bg-brand-gold text-white px-3 py-2 rounded text-sm font-medium hover:bg-yellow-600 transition flex items-center gap-2">
+                    <i class="fa-solid fa-sync-alt" id="sync-icon"></i>
+                    <span id="sync-text">Sync to Store</span>
+                </button>
+                <a href="product-dashboard.html" class="text-sm font-medium text-gray-600 hover:text-brand-gold">Dashboard</a>
                 <a href="admin-orders.html" class="text-sm font-medium text-gray-600 hover:text-brand-gold">Orders</a>
                 <a href="index.html" class="text-sm font-medium text-gray-600 hover:text-brand-gold">Back to Store</a>
             </div>
         </div>
     </nav>
 
+    <!-- Sync Status Alert -->
+    <div id="sync-status-alert" class="hidden bg-green-50 border-l-4 border-green-600 p-4 max-w-7xl mx-auto mt-4">
+        <div class="flex">
+            <div>
+                <p class="text-sm font-medium text-green-800" id="sync-status-message">Products synced successfully</p>
+                <p class="text-xs text-green-700 mt-1" id="sync-status-time"></p>
+            </div>
+        </div>
+    </div>
+
     <div class="max-w-7xl mx-auto px-4 py-8">
         <h2 class="text-3xl font-bold mb-8">Product Management</h2>
 
         <!-- Quick Stats -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div class="bg-white p-6 rounded-sm shadow-md">
                 <p class="text-gray-600 text-sm">Total Products</p>
                 <p class="text-3xl font-bold text-brand-gold" id="stat-total">0</p>
             </div>
             <div class="bg-white p-6 rounded-sm shadow-md">
-                <p class="text-gray-600 text-sm">Last Updated</p>
-                <p class="text-lg font-bold text-gray-800" id="stat-updated">Never</p>
+                <p class="text-gray-600 text-sm">Categories</p>
+                <p class="text-3xl font-bold text-gray-800" id="stat-categories">0</p>
             </div>
             <div class="bg-white p-6 rounded-sm shadow-md">
-                <p class="text-gray-600 text-sm">Status</p>
-                <p class="text-lg font-bold text-green-600"><i class="fa-solid fa-check-circle mr-2"></i>Live</p>
+                <p class="text-gray-600 text-sm">Last Synced</p>
+                <p class="text-sm font-bold text-gray-800" id="stat-updated">Never</p>
+            </div>
+            <div class="bg-white p-6 rounded-sm shadow-md">
+                <p class="text-gray-600 text-sm">Sync Status</p>
+                <p class="text-lg font-bold text-green-600"><i class="fa-solid fa-check-circle mr-2"></i><span id="sync-status-indicator">Live</span></p>
             </div>
         </div>
 
@@ -738,6 +757,77 @@
         
         // Set up real-time listener after a short delay
         setTimeout(setupFirestoreListener, 2000);
+
+        // Sync all products to store for guests and logged-in users
+        async function syncAllProductsToStore() {
+            const syncBtn = document.querySelector('[onclick="syncAllProductsToStore()"]');
+            const syncIcon = document.getElementById('sync-icon');
+            const syncText = document.getElementById('sync-text');
+            const alert = document.getElementById('sync-status-alert');
+            const alertMsg = document.getElementById('sync-status-message');
+            const alertTime = document.getElementById('sync-status-time');
+
+            try {
+                syncBtn.disabled = true;
+                syncIcon.classList.add('animate-spin');
+                syncText.textContent = 'Syncing...';
+
+                // Get all products from database
+                const products = allProducts;
+                
+                if (products.length === 0) {
+                    alert('⚠️ No products to sync. Please add some products first.');
+                    return;
+                }
+
+                // Sync via ProductSyncManager
+                if (window.productSyncManager) {
+                    await window.productSyncManager.saveProducts(products);
+                }
+
+                // Also force sync to Firestore
+                if (window.db) {
+                    const batch = window.db.batch();
+                    products.forEach(product => {
+                        const docRef = window.db.collection('products').doc(product.id);
+                        batch.set(docRef, {
+                            ...product,
+                            syncedAt: new Date().toISOString(),
+                            updatedAt: new Date().toISOString()
+                        });
+                    });
+                    await batch.commit();
+                }
+
+                // Update UI
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString();
+                
+                alertMsg.textContent = `✓ Successfully synced ${products.length} products to all stores`;
+                alertTime.textContent = `Synced at ${timeStr}. All guests and logged-in users will see updates immediately.`;
+                alert.classList.remove('hidden');
+
+                document.getElementById('stat-updated').textContent = timeStr;
+                document.getElementById('sync-status-indicator').textContent = 'Live';
+
+                // Hide alert after 5 seconds
+                setTimeout(() => {
+                    alert.classList.add('hidden');
+                }, 5000);
+
+                console.log('✓ All products synced to store for guests and logged-in users');
+
+            } catch (error) {
+                console.error('Sync failed:', error);
+                alertMsg.textContent = `❌ Sync failed: ${error.message}`;
+                alert.classList.remove('hidden');
+                alertMsg.className = 'text-sm font-medium text-red-800';
+            } finally {
+                syncBtn.disabled = false;
+                syncIcon.classList.remove('animate-spin');
+                syncText.textContent = 'Sync to Store';
+            }
+        }
     </script>
 
 </body>

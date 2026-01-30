@@ -12,6 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js"></script>
     <script src="products.js"></script>
+    <script src="category-manager.js"></script>
     <script src="firestore-sync.js"></script>
     <script src="auth.js"></script>
     <script src="session-timeout.js"></script>
@@ -28,8 +29,6 @@
         .navbar {
             background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
             border-bottom: 1px solid #e0e0e0;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        }
 
         .nav-link {
             position: relative;
@@ -426,10 +425,9 @@
         
         <aside class="w-full md:w-1/4">
             <h2 class="text-xl font-bold mb-6 border-b pb-2">Categories</h2>
-            <ul class="space-y-4 text-gray-600">
-                <li><button onclick="filterByCategory('all')" class="hover:text-brand-gold font-medium category-btn active-cat" data-cat="all">All Collection</button></li>
-                <li><button onclick="filterByCategory('ladies')" class="hover:text-brand-gold category-btn" data-cat="ladies">Ladies Collection</button></li>
-                <li><button onclick="filterByCategory('men')" class="hover:text-brand-gold category-btn" data-cat="men">Men's Collection</button></li>
+            <ul class="space-y-4 text-gray-600" id="categories-list">
+                <li><button onclick="filterByCategory('all')" class="hover:text-brand-gold font-medium category-btn active-cat" data-cat="all">All Products</button></li>
+                <!-- Categories will be populated dynamically -->
             </ul>
 
             <h2 class="text-xl font-bold mt-10 mb-6 border-b pb-2">Filter by Size</h2>
@@ -869,12 +867,12 @@
         document.querySelectorAll('.category-btn').forEach(btn => {
             if (btn.dataset.cat === currentFilter) {
                 btn.classList.add('active-cat');
-            }
         });
 
         // Register callback for when products are ready
         onProductsReady(function() {
             console.log('✓ Products ready, triggering display');
+            populateCategories();
             displayProducts();
         });
         
@@ -884,11 +882,41 @@
         // Load products immediately
         loadInventoryFromFirebase().then(success => {
             if (success) {
+                populateCategories();
                 displayProducts();
             }
         });
         
         updateCartCount();
+
+        // Populate category buttons dynamically
+        function populateCategories() {
+            const categoriesList = document.getElementById('categories-list');
+            if (!categoriesList || !window.categoryManager) return;
+
+            // Add category buttons
+            window.categoryManager.getAllCategories().forEach(category => {
+                const existingBtn = categoriesList.querySelector(`[data-cat="${category.id}"]`);
+                if (!existingBtn) {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<button onclick="filterByCategory('${category.id}')" class="hover:text-brand-gold category-btn" data-cat="${category.id}">
+                        <i class="fas ${category.icon} mr-2"></i>${category.name}
+                    </button>`;
+                    categoriesList.appendChild(li);
+                }
+            });
+
+            console.log('✓ Categories populated:', window.categoryManager.getAllCategories().length);
+        }
+
+        // Set up real-time product update listener for guests and logged-in users
+        window.addEventListener('productsSync', function(e) {
+            if (e.detail && e.detail.count > 0) {
+                console.log('🔄 Shop page received real-time product sync:', e.detail.count, 'products');
+                inventory = e.detail.products;
+                displayProducts();
+            }
+        });
 
         // ==================== IMAGE LOADING & CACHE BUSTING ====================
         // Load images and handle errors properly
