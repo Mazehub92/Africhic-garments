@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Africhic Garments</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="auth.js"></script>
+    <script src="modern-navbar.js"></script>
+    
+    <style>
+        :root { --brand-gold: #D4AF37; }
+        .text-brand-gold { color: #D4AF37; }
+        .bg-brand-gold { background-color: #D4AF37; }
+        .focus-gold:focus { outline: none; border-color: #D4AF37; box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2); }
+    </style>
+</head>
+<body class="bg-gray-50 flex flex-col min-h-screen">
+
+    <!-- Modern Navigation Bar -->
+    <nav class="navbar" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border-bottom: 1px solid #e0e0e0; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Brand Logo -->
+                <a href="index.html" style="display: flex; flex-direction: column; gap: 2px; text-decoration: none; transition: all 0.3s ease; color: #D4AF37; margin: 0 auto;">
+                    <span style="font-size: 1.5rem; font-weight: 700; letter-spacing: 2px;">AFRICHIC</span>
+                    <span style="font-size: 0.65rem; letter-spacing: 1.5px; color: #7f8c8d; font-weight: 600;">GARMENTS</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="flex-grow flex items-center justify-center px-4 pb-12">
+        <div class="max-w-md w-full bg-white shadow-xl rounded-lg p-8 border-t-4 border-brand-gold">
+            
+            <div class="flex border-b mb-6">
+                <button onclick="toggleAuth('login')" id="login-tab" class="w-1/2 py-2 font-bold border-b-2 border-brand-gold text-brand-gold">Login</button>
+                <button onclick="toggleAuth('signup')" id="signup-tab" class="w-1/2 py-2 font-bold text-gray-400 border-b-2 border-transparent hover:text-gray-600">Register</button>
+            </div>
+
+            <form id="login-form" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Email Address</label>
+                    <input type="email" id="login-email" required class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-md focus-gold" placeholder="you@example.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="login-password" required class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-md focus-gold" placeholder="••••••••">
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                    <label class="flex items-center text-gray-600">
+                        <input type="checkbox" id="remember-me" class="mr-2 rounded border-gray-300"> Remember me
+                    </label>
+                    <a href="#" class="text-brand-gold hover:underline">Forgot password?</a>
+                </div>
+                <button type="submit" class="w-full bg-brand-gold text-white py-3 rounded-md font-bold uppercase hover:bg-yellow-600 transition shadow-lg flex items-center justify-center gap-2">
+                    <span id="login-btn-text">Sign In</span>
+                    <span id="login-spinner" class="hidden"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                </button>
+                <div id="login-error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm"></div>
+            </form>
+
+            <form id="signup-form" class="hidden space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Full Name</label>
+                    <input type="text" id="signup-name" required class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-md focus-gold" placeholder="Jane Doe">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Email Address</label>
+                    <input type="email" id="signup-email" required class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-md focus-gold" placeholder="jane@example.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="signup-password" required class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-md focus-gold" placeholder="Create a password (min 6 chars)">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Confirm Password</label>
+                    <input type="password" id="signup-password-confirm" required class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-md focus-gold" placeholder="Confirm password">
+                </div>
+                <button type="submit" class="w-full bg-brand-gold text-white py-3 rounded-md font-bold uppercase hover:bg-yellow-600 transition shadow-lg flex items-center justify-center gap-2">
+                    <span id="signup-btn-text">Create Account</span>
+                    <span id="signup-spinner" class="hidden"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                </button>
+                <div id="signup-error" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm"></div>
+            </form>
+
+            <p class="text-center text-xs text-gray-500 mt-8">
+                By continuing, you agree to Africhic Garments' <br>
+                <a href="#" class="underline">Terms of Service</a> and <a href="#" class="underline">Privacy Policy</a>.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Check if user already logged in or if there's a redirect message
+        window.addEventListener('DOMContentLoaded', function() {
+            if (authManager.isLoggedIn()) {
+                window.location.href = 'shop.html';
+            }
+
+            // Check for login-required message
+            const params = new URLSearchParams(window.location.search);
+            const message = params.get('message');
+            
+            if (message === 'login-required') {
+                // Show message that login is required for shopping bag
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'bg-blue-50 border border-blue-200 text-blue-800 px-6 py-4 rounded-lg mb-6 flex items-start gap-3';
+                alertDiv.innerHTML = `
+                    <i class="fa-solid fa-info-circle text-xl mt-1"></i>
+                    <div>
+                        <p class="font-semibold">Authentication Required</p>
+                        <p class="text-sm text-blue-700 mt-1">Please login or create an account to proceed to your shopping bag.</p>
+                    </div>
+                `;
+                
+                const tabsDiv = document.querySelector('.flex.border-b');
+                if (tabsDiv && tabsDiv.parentElement) {
+                    tabsDiv.parentElement.insertBefore(alertDiv, tabsDiv);
+                }
+            }
+        });
+
+        function toggleAuth(type) {
+            const loginForm = document.getElementById('login-form');
+            const signupForm = document.getElementById('signup-form');
+            const loginTab = document.getElementById('login-tab');
+            const signupTab = document.getElementById('signup-tab');
+
+            if (type === 'signup') {
+                loginForm.classList.add('hidden');
+                signupForm.classList.remove('hidden');
+                signupTab.classList.add('border-brand-gold', 'text-brand-gold');
+                loginTab.classList.remove('border-brand-gold', 'text-brand-gold');
+                loginTab.classList.add('text-gray-400');
+            } else {
+                signupForm.classList.add('hidden');
+                loginForm.classList.remove('hidden');
+                loginTab.classList.add('border-brand-gold', 'text-brand-gold');
+                signupTab.classList.remove('border-brand-gold', 'text-brand-gold');
+                signupTab.classList.add('text-gray-400');
+            }
+        }
+
+        // Handle Login Submission
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            const rememberMe = document.getElementById('remember-me').checked;
+            const errorDiv = document.getElementById('login-error');
+            const spinner = document.getElementById('login-spinner');
+            const btnText = document.getElementById('login-btn-text');
+            const submitBtn = this.querySelector('button[type="submit"]');
+
+            // Clear previous errors
+            errorDiv.classList.add('hidden');
+
+            // Validate inputs
+            if (!email || !password) {
+                errorDiv.textContent = 'Please enter email and password';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            // Show loading state
+            spinner.classList.remove('hidden');
+            btnText.textContent = 'Signing In...';
+            submitBtn.disabled = true;
+
+            // Attempt login
+            const result = await authManager.login(email, password);
+            if (result.success) {
+                if (rememberMe) {
+                    localStorage.setItem('remember-email', email);
+                }
+                
+                // Get redirect URL if provided, otherwise go to shop
+                const params = new URLSearchParams(window.location.search);
+                const redirectUrl = params.get('redirect') ? decodeURIComponent(params.get('redirect')) : 'shop.html';
+                
+                setTimeout(() => {
+                    window.location.href = redirectUrl;
+                }, 500);
+            } else {
+                errorDiv.textContent = result.error || 'Login failed. Please try again.';
+                errorDiv.classList.remove('hidden');
+                spinner.classList.add('hidden');
+                btnText.textContent = 'Sign In';
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Handle Registration Submission
+        document.getElementById('signup-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('signup-name').value.trim();
+            const email = document.getElementById('signup-email').value.trim();
+            const password = document.getElementById('signup-password').value;
+            const confirmPassword = document.getElementById('signup-password-confirm').value;
+            const errorDiv = document.getElementById('signup-error');
+            const spinner = document.getElementById('signup-spinner');
+            const btnText = document.getElementById('signup-btn-text');
+            const submitBtn = this.querySelector('button[type="submit"]');
+
+            // Clear previous errors
+            errorDiv.classList.add('hidden');
+
+            // Validate inputs
+            if (!name || !email || !password || !confirmPassword) {
+                errorDiv.textContent = 'Please fill in all fields';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            if (password.length < 6) {
+                errorDiv.textContent = 'Password must be at least 6 characters';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                errorDiv.textContent = 'Passwords do not match';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                errorDiv.textContent = 'Please enter a valid email address';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            // Show loading state
+            spinner.classList.remove('hidden');
+            btnText.textContent = 'Creating Account...';
+            submitBtn.disabled = true;
+
+            // Attempt registration
+            const result = await authManager.register(email, password, name);
+
+            if (result.success) {
+                // Clear form
+                this.reset();
+                
+                // Get redirect URL if provided, otherwise go to shop
+                const params = new URLSearchParams(window.location.search);
+                const redirectUrl = params.get('redirect') ? decodeURIComponent(params.get('redirect')) : 'shop.html';
+                
+                // Show success and redirect
+                const successDiv = document.createElement('div');
+                successDiv.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4';
+                successDiv.innerHTML = `
+                    <div class="bg-white rounded-lg p-8 max-w-md text-center">
+                        <i class="fa-solid fa-check-circle text-5xl text-green-600 mb-4"></i>
+                        <h2 class="text-2xl font-bold mb-2">Welcome, ${name}!</h2>
+                        <p class="text-gray-600 mb-6">Your account has been created successfully.</p>
+                        <button onclick="window.location.href='${redirectUrl}'" class="bg-brand-gold text-white px-6 py-2 rounded font-bold hover:bg-yellow-600">
+                            ${redirectUrl.includes('cart') ? 'Go to Shopping Bag' : 'Go to Shop'}
+                        </button>
+                    </div>
+                `;
+                document.body.appendChild(successDiv);
+
+                setTimeout(() => {
+                    window.location.href = redirectUrl;
+                }, 2000);
+            } else {
+                errorDiv.textContent = result.error || 'Registration failed. Please try again.';
+                errorDiv.classList.remove('hidden');
+                spinner.classList.add('hidden');
+                btnText.textContent = 'Create Account';
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Pre-fill email if remembered
+        document.addEventListener('DOMContentLoaded', function() {
+            const rememberedEmail = localStorage.getItem('remember-email');
+            if (rememberedEmail) {
+                document.getElementById('login-email').value = rememberedEmail;
+                document.getElementById('remember-me').checked = true;
+            }
+        });
+    </script>
+</body>
+</html>

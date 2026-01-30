@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile | Africhic Garments</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="firestore-sync.js"></script>
+    <script src="auth.js"></script>
+    <script src="session-timeout.js"></script>
+    <script src="user-profile.js"></script>
+    <script src="page-protection.js"></script>
+    <script src="modern-navbar.js"></script>
+    
+    <style>
+        :root { --brand-gold: #D4AF37; }
+        .text-brand-gold { color: #D4AF37; }
+        .bg-brand-gold { background-color: #D4AF37; }
+        .input-field { 
+            width: 100%; 
+            padding: 0.75rem 1rem; 
+            border: 1px solid #d1d5db; 
+            border-radius: 0.125rem; 
+            transition: all 0.2s; 
+        }
+        .input-field:focus { 
+            border-color: #D4AF37; 
+            outline: none; 
+            box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2); 
+        }
+        .section-title { 
+            font-size: 1.125rem; 
+            font-weight: bold; 
+            margin-bottom: 1rem; 
+            padding-bottom: 0.5rem; 
+            border-bottom: 1px solid #e5e7eb; 
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Modern Navigation Bar -->
+    <nav class="navbar sticky top-0 z-50" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border-bottom: 1px solid #e0e0e0; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Brand Logo -->
+                <a href="index.html" style="display: flex; flex-direction: column; gap: 2px; text-decoration: none; transition: all 0.3s ease; color: #D4AF37;">
+                    <span style="font-size: 1.5rem; font-weight: 700; letter-spacing: 2px;">AFRICHIC</span>
+                    <span style="font-size: 0.65rem; letter-spacing: 1.5px; color: #7f8c8d; font-weight: 600;">GARMENTS</span>
+                </a>
+
+                <!-- Desktop Links -->
+                <div class="hidden md:flex space-x-8">
+                    <a href="shop.html" style="font-size: 0.95rem; color: #2c3e50; text-decoration: none; transition: all 0.3s ease;" class="hover:text-brand-gold">Shop</a>
+                    <a href="orders.html" style="font-size: 0.95rem; color: #2c3e50; text-decoration: none; transition: all 0.3s ease;" class="hover:text-brand-gold">Orders</a>
+                </div>
+
+                <!-- Right Side Icons -->
+                <div class="flex items-center space-x-4 md:space-x-6">
+                    <!-- Cart Icon -->
+                    <a href="cart.html" style="font-size: 1.2rem; color: #2c3e50; transition: all 0.3s ease; position: relative;" class="hover:text-brand-gold">
+                        <i class="fas fa-shopping-bag"></i>
+                    </a>
+
+                    <!-- Mobile Menu Button -->
+                    <button id="mobile-menu-btn" class="md:hidden nav-icon" style="font-size: 1.2rem; transition: all 0.3s ease; color: #2c3e50;">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="md:hidden hidden border-t border-gray-200 bg-white py-2">
+                <a href="shop.html" style="display: block; padding: 12px 16px; color: #2c3e50; text-decoration: none; font-size: 0.95rem; font-weight: 500; border-left: 4px solid transparent; transition: all 0.3s ease;" class="hover:bg-gray-100 hover:text-brand-gold hover:border-l-brand-gold">
+                    <i class="fas fa-shopping-bag mr-2"></i> Shop
+                </a>
+                <a href="orders.html" style="display: block; padding: 12px 16px; color: #2c3e50; text-decoration: none; font-size: 0.95rem; font-weight: 500; border-left: 4px solid transparent; transition: all 0.3s ease;" class="hover:bg-gray-100 hover:text-brand-gold hover:border-l-brand-gold">
+                    <i class="fas fa-receipt mr-2"></i> Orders
+                </a>
+                <a href="cart.html" style="display: block; padding: 12px 16px; color: #2c3e50; text-decoration: none; font-size: 0.95rem; font-weight: 500; border-left: 4px solid transparent; transition: all 0.3s ease;" class="hover:bg-gray-100 hover:text-brand-gold hover:border-l-brand-gold">
+                    <i class="fas fa-shopping-cart mr-2"></i> Cart
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto px-4 py-10">
+        <h1 class="text-3xl font-bold mb-10">My Profile</h1>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Main Profile Section -->
+            <div class="lg:col-span-2">
+                
+                <!-- Account Information -->
+                <div class="bg-white p-6 shadow-md rounded-sm border border-gray-100 mb-6">
+                    <h2 class="section-title">Account Information</h2>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between pb-4 border-b">
+                            <div>
+                                <p class="text-sm text-gray-600">Account Status</p>
+                                <p class="text-lg font-semibold text-gray-900" id="account-status">Active</p>
+                            </div>
+                            <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">Verified</span>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Full Name</label>
+                            <input type="text" id="profile-name" class="input-field" readonly>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Email Address</label>
+                            <input type="email" id="profile-email" class="input-field" readonly>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Account Created</label>
+                            <input type="text" id="profile-created" class="input-field" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Information -->
+                <div class="bg-white p-6 shadow-md rounded-sm border border-gray-100 mb-6">
+                    <h2 class="section-title">Saved Contact Information</h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Phone Number</label>
+                            <div class="flex gap-2">
+                                <input type="tel" id="profile-phone" class="input-field" placeholder="+27 (10 digits)">
+                                <button onclick="savePhoneNumber()" class="bg-brand-gold text-white px-4 py-2 font-semibold hover:bg-yellow-600 transition whitespace-nowrap">Save</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Preferred Delivery Address</label>
+                            <textarea id="profile-address" class="input-field" rows="3" placeholder="Enter your preferred delivery address"></textarea>
+                        </div>
+
+                        <button onclick="saveContactInfo()" class="w-full bg-brand-gold text-white py-3 font-bold uppercase hover:bg-yellow-600 transition">
+                            Save Contact Information
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Preferences -->
+                <div class="bg-white p-6 shadow-md rounded-sm border border-gray-100">
+                    <h2 class="section-title">Preferences</h2>
+                    
+                    <div class="space-y-4">
+                        <label class="flex items-center p-3 border border-gray-200 rounded cursor-pointer hover:border-brand-gold transition">
+                            <input type="checkbox" id="email-marketing" class="mr-3 w-4 h-4" checked>
+                            <div class="flex-grow">
+                                <p class="font-semibold text-gray-900">Email Notifications</p>
+                                <p class="text-sm text-gray-600">Receive updates about new products and promotions</p>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center p-3 border border-gray-200 rounded cursor-pointer hover:border-brand-gold transition">
+                            <input type="checkbox" id="order-updates" class="mr-3 w-4 h-4" checked>
+                            <div class="flex-grow">
+                                <p class="font-semibold text-gray-900">Order Updates</p>
+                                <p class="text-sm text-gray-600">Get notified about your order status</p>
+                            </div>
+                        </label>
+
+                        <button onclick="savePreferences()" class="w-full bg-brand-gold text-white py-3 font-bold uppercase hover:bg-yellow-600 transition">
+                            Save Preferences
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Sidebar -->
+            <div class="lg:col-span-1">
+                
+                <!-- Profile Summary -->
+                <div class="bg-white p-6 shadow-md rounded-sm border border-gray-100 mb-6">
+                    <div class="text-center mb-6">
+                        <div class="flex items-center justify-center h-16 w-16 rounded-full bg-brand-gold text-white font-bold text-2xl mx-auto mb-4">
+                            <span id="avatar-letter">A</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-900" id="sidebar-name">Customer</h3>
+                        <p class="text-sm text-gray-600" id="sidebar-email">email@example.com</p>
+                    </div>
+
+                    <hr class="mb-4">
+
+                    <div class="space-y-3">
+                        <a href="orders.html" class="block w-full text-center px-4 py-2 bg-gray-100 text-gray-900 font-semibold rounded hover:bg-gray-200 transition">
+                            <i class="fa-solid fa-receipt mr-2"></i> View Orders
+                        </a>
+                        <button onclick="changePassword()" class="w-full px-4 py-2 bg-gray-100 text-gray-900 font-semibold rounded hover:bg-gray-200 transition">
+                            <i class="fa-solid fa-key mr-2"></i> Change Password
+                        </button>
+                        <button onclick="logout()" class="w-full px-4 py-2 bg-red-100 text-red-600 font-semibold rounded hover:bg-red-200 transition">
+                            <i class="fa-solid fa-sign-out-alt mr-2"></i> Logout
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Account Stats -->
+                <div class="bg-white p-6 shadow-md rounded-sm border border-gray-100">
+                    <h3 class="font-bold mb-4 pb-2 border-b">Account Stats</h3>
+                    
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Total Orders</span>
+                            <span class="font-bold text-lg" id="total-orders">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Total Spent</span>
+                            <span class="font-bold text-lg" id="total-spent">R 0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Member Since</span>
+                            <span class="font-bold text-sm" id="member-since">N/A</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <a href="https://wa.me/27635617298?text=Hello%20Africhic%20Garments,%20I%20have%20a%20question%20about%20my%20account..." 
+       target="_blank" 
+       class="fixed bottom-6 right-6 bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform z-[100] flex items-center justify-center">
+        <i class="fa-brands fa-whatsapp text-3xl"></i>
+    </a>
+
+    <script>
+        function initializeProfile() {
+            // Require authentication
+            requireAuth();
+            
+            // Load user profile
+            const user = getCurrentUser();
+            if (user) {
+                loadUserProfile(user);
+            }
+        }
+
+        function loadUserProfile(user) {
+            // Set avatar letter
+            const letter = (user.displayName || user.email).charAt(0).toUpperCase();
+            document.getElementById('avatar-letter').textContent = letter;
+
+            // Set user info
+            document.getElementById('profile-name').value = user.displayName || user.email.split('@')[0];
+            document.getElementById('profile-email').value = user.email;
+            document.getElementById('sidebar-name').textContent = user.displayName || 'Customer';
+            document.getElementById('sidebar-email').textContent = user.email;
+
+            // Set account creation date
+            if (user.createdAt) {
+                const createdDate = new Date(user.createdAt);
+                document.getElementById('profile-created').value = createdDate.toLocaleDateString();
+                document.getElementById('member-since').textContent = createdDate.toLocaleDateString();
+            }
+
+            // Load saved contact info from localStorage
+            const savedProfile = localStorage.getItem('africhic-profile-' + user.uid);
+            if (savedProfile) {
+                try {
+                    const profile = JSON.parse(savedProfile);
+                    if (profile.phone) document.getElementById('profile-phone').value = profile.phone;
+                    if (profile.address) document.getElementById('profile-address').value = profile.address;
+                } catch (e) {
+                    console.log('Could not load saved profile');
+                }
+            }
+
+            // Load order statistics
+            loadOrderStats(user.uid);
+        }
+
+        function loadOrderStats(userId) {
+            const allOrders = JSON.parse(localStorage.getItem('africhic-orders')) || [];
+            const userOrders = allOrders.filter(order => {
+                try {
+                    return order.user_id === userId || order.email === getCurrentUser().email;
+                } catch (e) {
+                    return false;
+                }
+            });
+
+            document.getElementById('total-orders').textContent = userOrders.length;
+
+            const totalSpent = userOrders.reduce((sum, order) => {
+                const total = parseFloat(order.total) || 0;
+                return sum + total;
+            }, 0);
+
+            document.getElementById('total-spent').textContent = `R ${totalSpent.toFixed(2)}`;
+        }
+
+        function savePhoneNumber() {
+            const phone = document.getElementById('profile-phone').value.trim();
+            
+            if (!phone) {
+                alert('Please enter a phone number');
+                return;
+            }
+
+            // Save to localStorage with user ID
+            const user = getCurrentUser();
+            const savedProfile = JSON.parse(localStorage.getItem('africhic-profile-' + user.uid)) || {};
+            savedProfile.phone = phone;
+            localStorage.setItem('africhic-profile-' + user.uid, JSON.stringify(savedProfile));
+
+            alert('Phone number saved successfully!');
+        }
+
+        function saveContactInfo() {
+            const phone = document.getElementById('profile-phone').value.trim();
+            const address = document.getElementById('profile-address').value.trim();
+            
+            if (!phone || !address) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            const user = getCurrentUser();
+            const profile = {
+                phone: phone,
+                address: address,
+                updatedAt: new Date().toISOString()
+            };
+            
+            localStorage.setItem('africhic-profile-' + user.uid, JSON.stringify(profile));
+            alert('Contact information saved successfully!');
+        }
+
+        function savePreferences() {
+            const emailMarketing = document.getElementById('email-marketing').checked;
+            const orderUpdates = document.getElementById('order-updates').checked;
+
+            const user = getCurrentUser();
+            const savedProfile = JSON.parse(localStorage.getItem('africhic-profile-' + user.uid)) || {};
+            savedProfile.preferences = {
+                emailMarketing: emailMarketing,
+                orderUpdates: orderUpdates
+            };
+            
+            localStorage.setItem('africhic-profile-' + user.uid, JSON.stringify(savedProfile));
+            alert('Preferences saved successfully!');
+        }
+
+        function changePassword() {
+            if (typeof authManager !== 'undefined') {
+                alert('Password change will be implemented via Firebase. For now, please use your email to reset your password on the login page.');
+            }
+        }
+
+        async function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                if (typeof authManager !== 'undefined') {
+                    const result = await authManager.logout();
+                    if (result.success) {
+                        window.location.href = 'login.html';
+                    }
+                }
+            }
+        }
+
+        // Initialize when page loads
+        window.addEventListener('DOMContentLoaded', initializeProfile);
+
+        // Also initialize after short delay for Firebase to be ready
+        setTimeout(initializeProfile, 500);
+    </script>
+
+</body>
+</html>

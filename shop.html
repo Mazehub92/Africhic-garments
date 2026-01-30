@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shop | Africhic Garments</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="firestore-sync.js"></script>
+    <script src="auth.js"></script>
+    <script src="session-timeout.js"></script>
+    <script src="user-profile.js"></script>
+    <script src="sync-manager.js"></script>
+    <script src="product-sync-manager.js"></script>
+    <script src="modern-navbar.js"></script>
+    <style>
+        :root { --brand-gold: #D4AF37; }
+        .text-brand-gold { color: #D4AF37; }
+        .bg-brand-gold { background-color: #D4AF37; }
+
+        /* Modern Navbar Styling */
+        .navbar {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-bottom: 1px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .nav-link {
+            position: relative;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #2c3e50;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .nav-link:hover {
+            color: var(--brand-gold);
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--brand-gold);
+            transition: width 0.3s ease;
+        }
+
+        .nav-link:hover::after {
+            width: 100%;
+        }
+
+        .nav-link-dropdown {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            min-width: 220px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            padding: 8px 0;
+            z-index: 100;
+            border: 1px solid #e0e0e0;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dropdown-menu.hidden {
+            display: none;
+        }
+
+        .dropdown-item {
+            display: block;
+            padding: 12px 20px;
+            color: #2c3e50;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .dropdown-item:hover {
+            background: #f8f9fa;
+            color: var(--brand-gold);
+            border-left-color: var(--brand-gold);
+            padding-left: 24px;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #e0e0e0;
+            margin: 4px 0;
+        }
+
+        #mobile-menu {
+            animation: slideDown 0.3s ease;
+        }
+
+        #mobile-menu.hidden {
+            display: none;
+        }
+
+        .mobile-nav-link {
+            display: block;
+            padding: 12px 16px;
+            color: #2c3e50;
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            border-left: 4px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .mobile-nav-link:hover {
+            background: #f8f9fa;
+            color: var(--brand-gold);
+            border-left-color: var(--brand-gold);
+            padding-left: 20px;
+        }
+
+        .mobile-dropdown-item {
+            display: block;
+            padding: 10px 16px 10px 32px;
+            color: #555;
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .mobile-dropdown-item:hover {
+            background: #e8e8e8;
+            color: var(--brand-gold);
+            padding-left: 36px;
+        }
+
+        .nav-icon {
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-icon:hover {
+            color: var(--brand-gold);
+            transform: scale(1.1);
+        }
+
+        .brand-logo {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .brand-logo:hover {
+            transform: scale(1.05);
+        }
+
+        .brand-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--brand-gold);
+        }
+
+        .brand-tagline {
+            font-size: 0.65rem;
+            letter-spacing: 1.5px;
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+
+        .cart-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--brand-gold);
+            color: white;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (max-width: 767px) {
+            .dropdown-menu {
+                position: static;
+                box-shadow: none;
+                border: none;
+                border-radius: 0;
+                background: #f8f9fa;
+                margin-top: 0;
+                padding: 0;
+                border-left: 4px solid var(--brand-gold);
+            }
+
+            .nav-link::after {
+                display: none;
+            }
+
+            .brand-name {
+                font-size: 1.25rem;
+            }
+
+            .brand-tagline {
+                font-size: 0.6rem;
+            }
+        }
+        
+        :root {
+            --brand-gold: #D4AF37;
+        }
+        .text-brand-gold { color: #D4AF37; }
+        .bg-brand-gold { background-color: #D4AF37; }
+        
+        .category-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 0;
+            font-weight: normal;
+            color: #4b5563;
+        }
+
+        .category-btn.active-cat {
+            color: #D4AF37;
+            font-weight: bold;
+            border-bottom: 2px solid #D4AF37;
+            padding-bottom: 2px;
+        }
+
+        .category-btn:hover {
+            color: #D4AF37;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Modern Navigation Bar -->
+    <nav class="navbar sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Brand Logo -->
+                <a href="index.html" class="brand-logo">
+                    <span class="brand-name">AFRICHIC</span>
+                    <span class="brand-tagline">GARMENTS</span>
+                </a>
+
+                <!-- Desktop Navigation Menu -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="index.html" class="nav-link">Home</a>
+
+                    <!-- Shop Dropdown -->
+                    <div class="nav-link-dropdown group">
+                        <a href="shop.html" class="nav-link flex items-center gap-1">
+                            Shop
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </a>
+                        <div class="dropdown-menu hidden group-hover:block absolute left-0 mt-0">
+                            <a href="shop.html" class="dropdown-item">
+                                <i class="fas fa-store mr-2"></i> All Products
+                            </a>
+                            <a href="shop.html?cat=ladies" class="dropdown-item">
+                                <i class="fas fa-female mr-2"></i> Women's Collection
+                            </a>
+                            <a href="shop.html?cat=men" class="dropdown-item">
+                                <i class="fas fa-male mr-2"></i> Men's Collection
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="shop.html?cat=new" class="dropdown-item">
+                                <i class="fas fa-sparkles mr-2"></i> New Arrivals
+                            </a>
+                        </div>
+                    </div>
+
+                    <a href="shop.html" class="nav-link">Collections</a>
+                    <a href="contact.html" class="nav-link">Contact</a>
+                </div>
+
+                <!-- Right Side Icons -->
+                <div class="flex items-center space-x-4 md:space-x-6">
+                    <!-- Search Icon -->
+                    <button class="nav-icon" title="Search">
+                        <i class="fas fa-search"></i>
+                    </button>
+
+                    <!-- Orders Icon -->
+                    <a href="orders.html" class="nav-icon relative" title="Order History">
+                        <i class="fas fa-receipt"></i>
+                    </a>
+
+                    <!-- User Profile Dropdown (Logged In) -->
+                    <div id="user-profile-dropdown" class="nav-link-dropdown hidden group">
+                        <button class="nav-icon flex items-center gap-2 group" title="Profile Menu">
+                            <div id="profile-avatar" class="hidden w-8 h-8 rounded-full bg-brand-gold text-white text-xs font-bold flex items-center justify-center">U</div>
+                            <i id="profile-icon" class="fas fa-user"></i>
+                            <i class="fas fa-chevron-down text-xs hidden md:inline"></i>
+                        </button>
+                        <div id="navbar-profile-menu" class="dropdown-menu hidden group-hover:block absolute right-0 mt-2 w-56">
+                            <div id="profile-header" class="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                                <p id="profile-name" class="font-semibold text-gray-900">User Name</p>
+                                <p id="profile-email" class="text-xs text-gray-600 truncate">user@email.com</p>
+                            </div>
+                            <a href="profile.html" class="dropdown-item">
+                                <i class="fas fa-user mr-2"></i> My Profile
+                            </a>
+                            <a href="orders.html" class="dropdown-item">
+                                <i class="fas fa-receipt mr-2"></i> Order History
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <button onclick="userProfileDisplay.logout()" class="w-full text-left dropdown-item text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-400">
+                                <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Profile Icon (Not Logged In) -->
+                    <a id="login-icon" href="login.html" class="nav-icon" title="Login">
+                        <i class="fas fa-user"></i>
+                    </a>
+
+                    <!-- Cart Icon -->
+                    <a href="cart.html" class="nav-icon relative" title="Shopping Cart">
+                        <i class="fas fa-shopping-bag"></i>
+                        <span class="cart-badge" id="cart-count">0</span>
+                    </a>
+
+                    <!-- Mobile Menu Button -->
+                    <button id="mobile-menu-btn" class="md:hidden nav-icon" title="Menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Navigation Menu -->
+            <div id="mobile-menu" class="md:hidden hidden border-t border-gray-200 bg-white">
+                <a href="index.html" class="mobile-nav-link">
+                    <i class="fas fa-home mr-2"></i> Home
+                </a>
+
+                <!-- Mobile Shop Dropdown -->
+                <div class="nav-link-dropdown w-full">
+                    <a href="#" class="mobile-nav-link flex justify-between items-center" onclick="event.preventDefault();">
+                        <span><i class="fas fa-shopping-bag mr-2"></i> Shop</span>
+                        <i class="fas fa-chevron-down text-xs"></i>
+                    </a>
+                    <div class="dropdown-menu hidden">
+                        <a href="shop.html" class="mobile-dropdown-item">
+                            <i class="fas fa-store mr-2"></i> All Products
+                        </a>
+                        <a href="shop.html?cat=ladies" class="mobile-dropdown-item">
+                            <i class="fas fa-female mr-2"></i> Women's Collection
+                        </a>
+                        <a href="shop.html?cat=men" class="mobile-dropdown-item">
+                            <i class="fas fa-male mr-2"></i> Men's Collection
+                        </a>
+                        <a href="shop.html?cat=new" class="mobile-dropdown-item">
+                            <i class="fas fa-sparkles mr-2"></i> New Arrivals
+                        </a>
+                    </div>
+                </div>
+
+                <a href="shop.html" class="mobile-nav-link">
+                    <i class="fas fa-th-large mr-2"></i> Collections
+                </a>
+
+                <a href="contact.html" class="mobile-nav-link">
+                    <i class="fas fa-envelope mr-2"></i> Contact
+                </a>
+
+                <div class="border-t border-gray-200 mt-2 pt-2">
+                    <div id="mobile-user-section" class="hidden">
+                        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                            <p id="mobile-profile-name" class="font-semibold text-gray-900">User Name</p>
+                            <p id="mobile-profile-email" class="text-xs text-gray-600 truncate">user@email.com</p>
+                        </div>
+                        <a href="profile.html" class="mobile-nav-link">
+                            <i class="fas fa-user mr-2"></i> My Profile
+                        </a>
+                        <a href="orders.html" class="mobile-nav-link">
+                            <i class="fas fa-receipt mr-2"></i> My Orders
+                        </a>
+                        <button onclick="userProfileDisplay.logout()" class="w-full text-left mobile-nav-link text-red-600 hover:bg-red-50">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                        </button>
+                    </div>
+                    <a id="mobile-login-link" href="login.html" class="mobile-nav-link">
+                        <i class="fas fa-user mr-2"></i> Login / Register
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-8 flex flex-col md:flex-row gap-8">
+        
+        <aside class="w-full md:w-1/4">
+            <h2 class="text-xl font-bold mb-6 border-b pb-2">Categories</h2>
+            <ul class="space-y-4 text-gray-600">
+                <li><button onclick="filterByCategory('all')" class="hover:text-brand-gold font-medium category-btn active-cat" data-cat="all">All Collection</button></li>
+                <li><button onclick="filterByCategory('ladies')" class="hover:text-brand-gold category-btn" data-cat="ladies">Ladies Collection</button></li>
+                <li><button onclick="filterByCategory('men')" class="hover:text-brand-gold category-btn" data-cat="men">Men's Collection</button></li>
+            </ul>
+
+            <h2 class="text-xl font-bold mt-10 mb-6 border-b pb-2">Filter by Size</h2>
+            <div class="flex flex-wrap gap-2">
+                <button class="border px-3 py-1 hover:border-brand-gold">S</button>
+                <button class="border px-3 py-1 hover:border-brand-gold">M</button>
+                <button class="border px-3 py-1 hover:border-brand-gold">L</button>
+                <button class="border px-3 py-1 hover:border-brand-gold">XL</button>
+            </div>
+
+            <button onclick="openSizeGuide()" class="text-sm text-brand-gold underline mt-4 block">
+                <i class="fa-solid fa-ruler-combined mr-1"></i> View Size Guide
+            </button>
+        </aside>
+
+        <main class="w-full md:w-3/4">
+            <div class="flex justify-between items-center mb-8">
+                <p class="text-gray-500">Showing all unique pieces</p>
+                <select class="border p-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand-gold">
+                    <option>Latest Arrivals</option>
+                    <option>Price: Low to High</option>
+                    <option>Price: High to Low</option>
+                </select>
+            </div>
+
+            <div id="product-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Dynamic product cards will be injected here by products.js -->
+            </div>
+        </main>
+    </div>
+
+    <footer class="bg-zinc-900 text-white py-12 mt-12">
+        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+                <h4 class="text-brand-gold font-bold mb-4 uppercase">Africhic Garments</h4>
+                <p class="text-gray-400 text-sm">Handcrafted African print clothing for every occasion. Quality fabrics, exceptional designs.</p>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4 uppercase text-sm">Shop</h4>
+                <ul class="text-gray-400 space-y-2 text-sm">
+                    <li><a href="shop.html" class="hover:text-brand-gold transition">Shop All</a></li>
+                    <li><a href="shop.html?cat=ladies" class="hover:text-brand-gold transition">Ladies Collection</a></li>
+                    <li><a href="shop.html?cat=men" class="hover:text-brand-gold transition">Men's Collection</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4 uppercase text-sm">Account</h4>
+                <ul class="text-gray-400 space-y-2 text-sm">
+                    <li><a href="orders.html" class="hover:text-brand-gold transition">Order History</a></li>
+                    <li><a href="cart.html" class="hover:text-brand-gold transition">Shopping Cart</a></li>
+                    <li><a href="login.html" class="hover:text-brand-gold transition">Login</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4 uppercase text-sm">Contact</h4>
+                <p class="text-gray-400 text-sm mb-3">
+                    <a href="https://wa.me/27635617298" target="_blank" class="hover:text-brand-gold transition flex items-center gap-2">
+                        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                    </a>
+                </p>
+                <p class="text-gray-400 text-sm">Follow us on social media for updates and new collections.</p>
+            </div>
+        </div>
+        
+        <div class="max-w-7xl mx-auto px-6 border-t border-gray-700 mt-8 pt-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <p class="text-gray-500 text-sm">© 2024 Africhic Garments. All rights reserved.</p>
+                <div class="flex space-x-4 text-gray-500 mt-4 md:mt-0">
+                    <i class="fa-brands fa-cc-visa hover:text-brand-gold cursor-pointer transition"></i>
+                    <i class="fa-brands fa-cc-mastercard hover:text-brand-gold cursor-pointer transition"></i>
+                    <i class="fa-brands fa-cc-paypal hover:text-brand-gold cursor-pointer transition"></i>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <script src="products.js"></script>
+    <script>
+        const container = document.getElementById('product-container');
+        let currentFilter = 'all';
+        let allProducts = [];
+        let isLoading = false;
+
+        // Get category from URL parameters
+        function getUrlCategory() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('cat') || 'all';
+        }
+
+        // Filter products by category
+        function filterByCategory(category) {
+            currentFilter = category;
+            
+            // Update active button
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('active-cat');
+                if (btn.dataset.cat === category) {
+                    btn.classList.add('active-cat');
+                }
+            });
+
+            displayProducts();
+        }
+
+        // Display products with category filtering
+        async function displayProducts() {
+            // Prevent multiple simultaneous loads
+            if (isLoading) return;
+            isLoading = true;
+            
+            try {
+                // Load from Firebase/localStorage
+                await loadInventoryFromFirebase();
+                
+                // Store all products for filtering
+                allProducts = inventory;
+                
+                // Filter products based on current category
+                let filteredProducts = allProducts;
+                if (currentFilter !== 'all') {
+                    filteredProducts = allProducts.filter(product => {
+                        return product.category.startsWith(currentFilter);
+                    });
+                }
+                container.innerHTML = '';
+                if (filteredProducts.length === 0) {
+                    if (currentFilter === 'all') {
+                        container.innerHTML = `
+                            <div class="col-span-full text-center py-20">
+                                <i class="fa-solid fa-box-open text-5xl text-gray-300 mb-4"></i>
+                                <p class="text-gray-500 text-lg">No products available yet</p>
+                                <p class="text-gray-400 text-sm mt-2">Check back soon as we're adding new items daily!</p>
+                            </div>
+                        `;
+                    } else {
+                        container.innerHTML = '<p class="col-span-full text-center text-gray-500">No products in this category</p>';
+                    }
+                    return;
+                }
+                
+                console.log(`[Shop] Displaying ${filteredProducts.length} products for category: ${currentFilter}`);
+                
+                // Use a document fragment to batch DOM updates
+                const fragment = document.createDocumentFragment();
+                
+                filteredProducts.forEach(product => {
+                    // Build colours display
+                    let coloursHTML = '';
+                    if (product.colours && product.colours.length > 0) {
+                        coloursHTML = `
+                            <div class="mt-3 pt-3 border-t">
+                                <p class="text-xs font-semibold text-gray-600 mb-2">Available Colours:</p>
+                                <div class="flex flex-wrap gap-2">
+                                    ${product.colours.map(colour => `
+                                        <span class="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded border border-gray-200">
+                                            ${colour}
+                                        </span>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Build sizes display
+                    let sizesHTML = '';
+                    if (product.sizes && product.sizes.length > 0) {
+                        sizesHTML = `
+                            <p class="text-xs text-gray-500 mt-2">Available Sizes: <span class="font-semibold text-gray-700">${product.sizes.join(', ')}</span></p>
+                        `;
+                    }
+
+                    // Build stock status
+                    const stockStatus = product.stock && product.stock > 0;
+                    const stockHTML = `
+                        <div class="mt-2 pt-2 border-t">
+                            ${stockStatus 
+                                ? `<p class="text-xs text-green-600 font-semibold"><i class="fa-solid fa-check-circle mr-1"></i>${product.stock} in stock</p>` 
+                                : `<p class="text-xs text-red-600 font-semibold"><i class="fa-solid fa-x-circle mr-1"></i>Out of Stock</p>`}
+                        </div>
+                    `;
+
+                    const productEl = document.createElement('div');
+                    productEl.innerHTML = `
+                        <div class="group bg-white border border-gray-100 rounded-sm overflow-hidden shadow-sm hover:shadow-md transition">
+                            <div class="relative h-80 overflow-hidden bg-gray-100">
+                                <img src="${product.image || 'https://via.placeholder.com/400x500?text=Product+Image'}" 
+                                     data-id="${product.id}"
+                                     class="w-full h-full object-cover product-image" 
+                                     alt="${product.name}"
+                                     loading="lazy"
+                                     onerror="this.src='https://via.placeholder.com/400x500?text=Product+Image'; this.style.display='block';">
+                                <div class="absolute bottom-0 left-0 right-0 p-4 translate-y-0">
+                                    ${stockStatus 
+                                        ? `<button onclick="openSizeSelector('${product.id}')" class="w-full bg-brand-gold text-white py-3 px-4 font-bold uppercase text-sm hover:bg-opacity-90 active:scale-95 flex items-center justify-center gap-2 rounded shadow-md">
+                                            <i class="fa-solid fa-shopping-bag"></i> Buy
+                                        </button>` 
+                                        : `<button disabled class="w-full bg-gray-400 text-white py-3 px-4 font-bold uppercase text-sm cursor-not-allowed opacity-75 flex items-center justify-center gap-2"><i class="fa-solid fa-ban mr-2"></i>Out of Stock</button>`}
+                                </div>
+                            </div>
+                            <div class="p-4">
+                                <h3 class="font-bold text-gray-800 line-clamp-2">${product.name}</h3>
+                                <p class="text-sm text-gray-500 mb-2 italic">${product.category.replace('-', ' ')}</p>
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="text-lg font-bold text-brand-gold">R ${product.price.toFixed(2)}</span>
+                                </div>
+                                ${sizesHTML}
+                                ${coloursHTML}
+                                ${stockHTML}
+                            </div>
+                        </div>
+                    `;
+                    fragment.appendChild(productEl.firstElementChild);
+                });
+                
+                container.appendChild(fragment);
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        function openSizeSelector(productId) {
+            const product = inventory.find(p => String(p.id) === String(productId));
+            if (!product) return;
+
+            // Store current product
+            window.currentSelectorProduct = product;
+            document.getElementById('selector-product-name').textContent = product.name;
+            document.getElementById('unit-price').textContent = `R ${product.price.toFixed(2)}`;
+
+            // Populate sizes
+            const sizesGrid = document.getElementById('sizes-grid');
+            sizesGrid.innerHTML = '';
+            if (product.sizes && product.sizes.length > 0) {
+                product.sizes.forEach(size => {
+                    sizesGrid.innerHTML += `
+                        <button type="button" class="size-btn px-4 py-3 border-2 border-gray-300 rounded-sm font-bold hover:border-brand-gold transition" onclick="selectSize(this, '${size}')">
+                            ${size}
+                        </button>
+                    `;
+                });
+            }
+
+            // Populate colours if available
+            const colourDiv = document.getElementById('colour-selection-div');
+            const coloursGrid = document.getElementById('colours-grid');
+            if (product.colours && product.colours.length > 0) {
+                colourDiv.classList.remove('hidden');
+                coloursGrid.innerHTML = '';
+                product.colours.forEach(colour => {
+                    coloursGrid.innerHTML += `
+                        <button type="button" class="colour-btn px-4 py-2 border-2 border-gray-300 rounded-sm text-sm hover:border-brand-gold transition" onclick="selectColour(this, '${colour}')">
+                            ${colour}
+                        </button>
+                    `;
+                });
+            } else {
+                colourDiv.classList.add('hidden');
+            }
+
+            // Reset form
+            document.getElementById('selected-size').value = '';
+            document.getElementById('selected-colour').value = '';
+            document.getElementById('selected-quantity').value = '1';
+            document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('border-brand-gold', 'bg-brand-gold', 'text-white'));
+            document.querySelectorAll('.colour-btn').forEach(btn => btn.classList.remove('border-brand-gold', 'bg-brand-gold', 'text-white'));
+
+            updateSelectorPrice();
+            document.getElementById('size-selector-modal').classList.replace('hidden', 'flex');
+        }
+
+        function closeSizeSelector() {
+            document.getElementById('size-selector-modal').classList.replace('flex', 'hidden');
+        }
+
+        function selectSize(button, size) {
+            document.querySelectorAll('.size-btn').forEach(btn => {
+                btn.classList.remove('border-brand-gold', 'bg-brand-gold', 'text-white');
+                btn.classList.add('border-gray-300');
+            });
+            button.classList.remove('border-gray-300');
+            button.classList.add('border-brand-gold', 'bg-brand-gold', 'text-white');
+            document.getElementById('selected-size').value = size;
+        }
+
+        function selectColour(button, colour) {
+            document.querySelectorAll('.colour-btn').forEach(btn => {
+                btn.classList.remove('border-brand-gold', 'bg-brand-gold', 'text-white');
+                btn.classList.add('border-gray-300');
+            });
+            button.classList.remove('border-gray-300');
+            button.classList.add('border-brand-gold', 'bg-brand-gold', 'text-white');
+            document.getElementById('selected-colour').value = colour;
+        }
+
+        function increaseQuantity() {
+            const input = document.getElementById('selected-quantity');
+            const max = parseInt(input.max);
+            if (parseInt(input.value) < max) {
+                input.value = parseInt(input.value) + 1;
+                updateSelectorPrice();
+            }
+        }
+
+        function decreaseQuantity() {
+            const input = document.getElementById('selected-quantity');
+            const min = parseInt(input.min);
+            if (parseInt(input.value) > min) {
+                input.value = parseInt(input.value) - 1;
+                updateSelectorPrice();
+            }
+        }
+
+        function updateSelectorPrice() {
+            const quantity = parseInt(document.getElementById('selected-quantity').value);
+            const price = window.currentSelectorProduct ? window.currentSelectorProduct.price : 0;
+            const total = price * quantity;
+            document.getElementById('total-selector-price').textContent = `R ${total.toFixed(2)}`;
+        }
+
+        // Attach form submit handler when DOM is ready
+        function attachFormSubmitHandler() {
+            const form = document.getElementById('size-quantity-form');
+            console.log('[Shop] Form submit handler - form element:', form ? 'FOUND' : 'NOT FOUND');
+            
+            if (form) {
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    console.log('[Shop] Form submitted - processing cart addition');
+                    
+                    const size = document.getElementById('selected-size').value;
+                    const quantity = parseInt(document.getElementById('selected-quantity').value);
+                    const colour = document.getElementById('selected-colour').value;
+                    
+                    console.log('[Shop] Size:', size, 'Quantity:', quantity, 'Colour:', colour);
+
+                    if (!size) {
+                        alert('Please select a size');
+                        console.warn('[Shop] Size not selected');
+                        return;
+                    }
+
+                    if (!window.currentSelectorProduct) {
+                        console.warn('[Shop] No product selected');
+                        return;
+                    }
+
+                    const product = window.currentSelectorProduct;
+                    let cart = JSON.parse(localStorage.getItem('africhic-cart')) || [];
+                    console.log('[Shop] Current cart items:', cart.length);
+
+                    // Add item with size and quantity
+                    for (let i = 0; i < quantity; i++) {
+                        cart.push({
+                            id: product.id,
+                            name: product.name,
+                            price: product.price,
+                            image: product.image,
+                            size: size,
+                            colour: colour || 'Default',
+                            category: product.category
+                        });
+                    }
+
+                    localStorage.setItem('africhic-cart', JSON.stringify(cart));
+                    console.log('[Shop] ✓ Cart updated. New total items:', cart.length);
+                    
+                    updateCartCount();
+                    closeSizeSelector();
+                    
+                    alert(`${quantity}x ${product.name} (Size ${size}) added to your bag!`);
+                });
+            }
+        }
+
+        // Call when page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', attachFormSubmitHandler);
+        } else {
+            attachFormSubmitHandler();
+        }
+
+        function addToCart(productId) {
+            const product = inventory.find(p => String(p.id) === String(productId));
+            if (!product) {
+                alert('Product not found!');
+                return;
+            }
+            let cart = JSON.parse(localStorage.getItem('africhic-cart')) || [];
+            cart.push(product);
+            localStorage.setItem('africhic-cart', JSON.stringify(cart));
+            updateCartCount();
+            alert(`${product.name} added to your bag!`);
+        }
+
+        function updateCartCount() {
+            const cart = JSON.parse(localStorage.getItem('africhic-cart')) || [];
+            document.getElementById('cart-count').innerText = cart.length;
+        }
+
+        // ==================== REAL-TIME UPDATES ====================
+        // Listen for product updates from admin panel (same window)
+        window.addEventListener('productsUpdated', function(e) {
+            console.log('🔄 Real-time product update detected!');
+            if (e.detail && e.detail.products) {
+                inventory = e.detail.products;
+                displayProducts();
+            }
+        });
+
+        // Listen for product updates from other tabs/windows
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'africhic-products' && e.newValue) {
+                try {
+                    console.log('🔄 Syncing products from other tab');
+                    inventory = JSON.parse(e.newValue);
+                    displayProducts();
+                } catch (error) {
+                    console.error('Error syncing products:', error);
+                }
+            }
+        });
+
+        // Listen for postMessage from admin window
+        window.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'PRODUCTS_UPDATED') {
+                console.log('🔄 Products updated from admin panel');
+                displayProducts();
+            }
+        });
+
+        // Load products when page is ready
+        currentFilter = getUrlCategory();
+        
+        // Set active button based on URL
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            if (btn.dataset.cat === currentFilter) {
+                btn.classList.add('active-cat');
+            }
+        });
+
+        displayProducts();
+        updateCartCount();
+
+        // ==================== IMAGE LOADING & CACHE BUSTING ====================
+        // Load images and handle errors properly
+        function loadProductImages() {
+            const images = document.querySelectorAll('.product-image[data-src]');
+            console.log(`[Shop] Loading ${images.length} product images`);
+            
+            images.forEach(img => {
+                const src = img.dataset.src;
+                const productId = img.dataset.id;
+                
+                if (!src) {
+                    console.warn(`[Shop] Product ${productId} has no image URL`);
+                    handleImageError(img, productId);
+                    return;
+                }
+                
+                // Add cache-buster for non-data URLs
+                let finalSrc = src;
+                if (!src.startsWith('data:')) {
+                    const separator = src.includes('?') ? '&' : '?';
+                    finalSrc = `${src}${separator}v=${Date.now()}`;
+                }
+                
+                // Set the actual src to load the image
+                img.src = finalSrc;
+                
+                console.log(`[Shop] Loading image for product ${productId}: ${finalSrc.substring(0, 50)}...`);
+            });
+        }
+        
+        // Handle image loading errors
+        function handleImageError(img, productName) {
+            console.error(`[Shop] Failed to load image for: ${productName}`);
+            
+            // Use placeholder with a gradient background
+            img.style.background = 'linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%)';
+            img.style.display = 'flex';
+            img.style.alignItems = 'center';
+            img.style.justifyContent = 'center';
+            img.innerHTML = '<span style="color: #6b7280; font-size: 14px; text-align: center; padding: 20px;">📦<br>Image<br>Loading</span>';
+            
+            // Retry loading after 2 seconds
+            setTimeout(() => {
+                const product = inventory.find(p => String(p.id) === String(productName));
+                if (product && product.image) {
+                    img.innerHTML = '';
+                    let retrySrc = product.image;
+                    if (!product.image.startsWith('data:')) {
+                        const separator = product.image.includes('?') ? '&' : '?';
+                        retrySrc = `${product.image}${separator}v=${Date.now()}`;
+                    }
+                    img.src = retrySrc;
+                    console.log(`[Shop] Retrying image load for: ${productName}`);
+                }
+            }, 2000);
+        }
+        
+        // Intercept displayProducts to load images after render
+        const originalDisplayProducts = window.displayProducts;
+        window.displayProducts = async function() {
+            await originalDisplayProducts.call(this);
+            // Load images after DOM updates
+            setTimeout(loadProductImages, 50);
+        };
+
+        // Handle hash-based size selector opening (from homepage links)
+        function handleHashNavigation() {
+            const hash = window.location.hash;
+            if (hash && hash.startsWith('#select-size-')) {
+                const productId = hash.substring('#select-size-'.length);
+                // Wait a moment for products to render, then open selector
+                setTimeout(() => {
+                    openSizeSelector(productId);
+                }, 500);
+            }
+        }
+
+        // Handle hash on page load and when hash changes
+        window.addEventListener('hashchange', handleHashNavigation);
+        handleHashNavigation();
+
+        // Set up real-time product update listener via ProductSyncManager
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                if (window.productSyncManager && window.productSyncManager.isInitialized) {
+                    // Register for real-time product updates
+                    window.productSyncManager.onProductsUpdated((products) => {
+                        console.log('🔄 Real-time product update received in shop:', products.length, 'products');
+                        inventory = products;
+                        allProducts = products;
+                        localStorage.setItem('africhic-products', JSON.stringify(products));
+                        
+                        // Refresh the display to show updated products, prices, stock, etc.
+                        displayProducts();
+                        console.log('✓ Shop display updated with latest products');
+                    });
+                    console.log('✓ ProductSyncManager listener registered on shop page');
+                } else {
+                    console.log('⏳ Waiting for ProductSyncManager to initialize...');
+                    // Retry after a delay
+                    setTimeout(arguments.callee, 1000);
+                }
+            }, 500); // Wait for ProductSyncManager to initialize
+        });
+
+        function openSizeGuide() {
+            document.getElementById('size-modal').classList.replace('hidden', 'flex');
+        }
+
+        function closeSizeGuide() {
+            document.getElementById('size-modal').classList.replace('flex', 'hidden');
+        }
+
+        // Close modal when clicking outside of it
+        document.getElementById('size-modal').addEventListener('click', function(event) {
+            if (event.target === this) {
+                closeSizeGuide();
+            }
+        });
+    </script>
+
+    <div id="size-selector-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[100] p-4">
+        <div class="bg-white max-w-md w-full rounded-sm shadow-2xl overflow-hidden">
+            <div class="p-6 border-b flex justify-between items-center bg-gray-50">
+                <h3 class="text-xl font-bold uppercase tracking-widest text-brand-gold" id="selector-product-name">Product</h3>
+                <button onclick="closeSizeSelector()" class="text-2xl hover:text-red-500">&times;</button>
+            </div>
+            <div class="p-6">
+                <form id="size-quantity-form" class="space-y-6">
+                    <!-- Size Selection -->
+                    <div>
+                        <label class="block text-sm font-bold mb-3 text-gray-700">SELECT SIZE *</label>
+                        <div id="sizes-grid" class="grid grid-cols-4 gap-2">
+                            <!-- Sizes will be populated here -->
+                        </div>
+                        <input type="hidden" id="selected-size" required>
+                    </div>
+
+                    <!-- Quantity Selection -->
+                    <div>
+                        <label class="block text-sm font-bold mb-3 text-gray-700">QUANTITY *</label>
+                        <div class="flex items-center border border-gray-300 rounded-sm w-fit">
+                            <button type="button" onclick="decreaseQuantity()" class="px-4 py-2 text-gray-600 hover:bg-gray-100">−</button>
+                            <input type="number" id="selected-quantity" value="1" min="1" max="10" class="w-16 text-center border-l border-r border-gray-300 py-2" readonly>
+                            <button type="button" onclick="increaseQuantity()" class="px-4 py-2 text-gray-600 hover:bg-gray-100">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Colour Selection (Optional) -->
+                    <div id="colour-selection-div" class="hidden">
+                        <label class="block text-sm font-bold mb-3 text-gray-700">COLOUR (Optional)</label>
+                        <div id="colours-grid" class="flex flex-wrap gap-2">
+                            <!-- Colours will be populated here -->
+                        </div>
+                        <input type="hidden" id="selected-colour">
+                    </div>
+
+                    <!-- Price Display -->
+                    <div class="bg-gray-50 p-4 rounded-sm">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-gray-600">Unit Price:</span>
+                            <span id="unit-price" class="font-bold">R 0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center text-lg font-bold border-t pt-2">
+                            <span>Total:</span>
+                            <span id="total-selector-price" class="text-brand-gold">R 0.00</span>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-brand-gold text-white py-3 rounded-sm font-bold uppercase hover:bg-yellow-600 transition">
+                        Add to Bag
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="size-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[100] p-4">
+        <div class="bg-white max-w-2xl w-full rounded-sm shadow-2xl overflow-hidden">
+            <div class="p-6 border-b flex justify-between items-center bg-gray-50">
+                <h3 class="text-xl font-bold uppercase tracking-widest text-brand-gold">Africhic Size Guide</h3>
+                <button onclick="closeSizeGuide()" class="text-2xl hover:text-red-500">&times;</button>
+            </div>
+            <div class="p-6 overflow-x-auto">
+                <p class="text-sm text-gray-600 mb-4 italic text-center">*Measurements are in cm. Our fabric is 100% cotton with no stretch. If you are between sizes, we recommend sizing up.*</p>
+                <table class="w-full text-sm text-left border-collapse">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="p-3 border">Size</th>
+                            <th class="p-3 border">Bust (cm)</th>
+                            <th class="p-3 border">Waist (cm)</th>
+                            <th class="p-3 border">Hips (cm)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="p-3 border font-bold">Small (32)</td><td class="p-3 border">82-86</td><td class="p-3 border">66-70</td><td class="p-3 border">90-94</td></tr>
+                        <tr><td class="p-3 border font-bold">Medium (34)</td><td class="p-3 border">88-92</td><td class="p-3 border">72-76</td><td class="p-3 border">96-100</td></tr>
+                        <tr><td class="p-3 border font-bold">Large (36)</td><td class="p-3 border">94-98</td><td class="p-3 border">78-82</td><td class="p-3 border">102-106</td></tr>
+                        <tr><td class="p-3 border font-bold">XL (38)</td><td class="p-3 border">100-104</td><td class="p-3 border">84-88</td><td class="p-3 border">108-112</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <a href="https://wa.me/27635617298?text=Hello%20Africhic%20Garments,%20I%20have%20a%20question%20about%20an%20item..." 
+       target="_blank" 
+       class="fixed bottom-6 right-6 bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform z-[100] flex items-center justify-center">
+        <i class="fa-brands fa-whatsapp text-3xl"></i>
+        <span class="absolute right-full mr-3 bg-white text-gray-800 text-xs font-bold px-2 py-1 rounded shadow-sm whitespace-nowrap opacity-0 hover:opacity-100 transition-opacity">
+            Chat with us
+        </span>
+    </a>
+</body>
+</html>

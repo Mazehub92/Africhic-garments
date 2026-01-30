@@ -1,0 +1,75 @@
+[build]
+  # No build command needed - static site
+  command = ""
+  # Publish the root directory - must be . for static sites
+  publish = "."
+  # Set environment variables for Netlify
+  environment = { NODE_VERSION = "18", NODE_ENV = "production" }
+  # Ignore build cache to ensure fresh deployment
+  functions = "functions"
+
+# Redirect rules for single-page app behavior
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Don't process HTML files for static assets
+[[redirects]]
+  from = "/images/*"
+  to = ":splat"
+  status = 200
+
+[[redirects]]
+  from = "/styles/*"
+  to = ":splat"
+  status = 200
+
+[[redirects]]
+  from = "/js/*"
+  to = ":splat"
+  status = 200
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+
+# Cache static assets indefinitely
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Cache JavaScript files (1 hour)
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+# Cache CSS files (1 hour)
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, must-revalidate"
+
+# Don't cache HTML files - always fetch fresh
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Custom domain handling
+[context.production]
+  environment = { NODE_ENV = "production" }
+
+[context.deploy-preview]
+  environment = { NODE_ENV = "development" }
+
+[context.branch-deploy]
+  environment = { NODE_ENV = "development" }

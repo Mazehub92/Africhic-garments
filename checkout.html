@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout | Africhic Garments</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://js.paystack.co/v1/inline.js"></script>
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="firestore-sync.js"></script>
+    <script src="orders-manager.js"></script>
+    <script src="auth.js"></script>
+    <script src="session-timeout.js"></script>
+    <script src="user-profile.js"></script>
+    <script src="page-protection.js"></script>
+    <script src="product-sync-manager.js"></script>
+    <script src="modern-navbar.js"></script>
+    <style>
+        :root { --brand-gold: #D4AF37; }
+        .text-brand-gold { color: #D4AF37; }
+        .bg-brand-gold { background-color: #D4AF37; }
+        .input-field { width: 100%; padding: 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 0.125rem; transition: all 0.2s; }
+        .input-field:focus { border-color: #D4AF37; outline: none; box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2); }
+        .section-title { font-size: 1.125rem; font-weight: bold; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb; }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Modern Navigation Bar -->
+    <nav class="navbar sticky top-0 z-50" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border-bottom: 1px solid #e0e0e0; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Brand Logo -->
+                <a href="index.html" style="display: flex; flex-direction: column; gap: 2px; text-decoration: none; transition: all 0.3s ease; color: #D4AF37;">
+                    <span style="font-size: 1.5rem; font-weight: 700; letter-spacing: 2px;">AFRICHIC</span>
+                    <span style="font-size: 0.65rem; letter-spacing: 1.5px; color: #7f8c8d; font-weight: 600;">GARMENTS</span>
+                </a>
+
+                <!-- Spacer -->
+                <div></div>
+
+                <!-- Right Side Icons -->
+                <div class="flex items-center space-x-4 md:space-x-6">
+                    <!-- Back to Cart -->
+                    <a href="cart.html" style="font-size: 0.95rem; color: #2c3e50; text-decoration: none; transition: all 0.3s ease;" class="hover:text-brand-gold">
+                        <i class="fas fa-arrow-left mr-1"></i> <span class="hidden sm:inline">Back to Cart</span>
+                    </a>
+
+                    <!-- Cart Icon -->
+                    <a href="cart.html" style="font-size: 1.2rem; color: #2c3e50; transition: all 0.3s ease; position: relative;" class="hover:text-brand-gold">
+                        <i class="fas fa-shopping-bag"></i>
+                    </a>
+
+                    <!-- Mobile Menu Button -->
+                    <button id="mobile-menu-btn" class="md:hidden nav-icon" style="font-size: 1.2rem; transition: all 0.3s ease; color: #2c3e50;">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto px-4 py-10">
+        <h1 class="text-3xl font-bold mb-10">Checkout</h1>
+
+        <div class="flex flex-col lg:flex-row gap-12">
+            <!-- Main Checkout Form -->
+            <div class="lg:w-2/3">
+                <form id="checkout-form" class="space-y-8">
+
+                    <!-- Delivery Method Selection -->
+                    <div class="bg-white p-6 shadow-md rounded-sm border border-gray-100">
+                        <h2 class="section-title">Delivery Method</h2>
+                        
+                        <div class="space-y-3">
+                            <label class="flex items-center p-4 border border-gray-300 rounded cursor-pointer hover:bg-gray-50 transition" id="delivery-home-label">
+                                <input type="radio" name="delivery_method" value="home_delivery" class="mr-3 w-4 h-4" onchange="toggleDeliverySection()" checked>
+                                <div class="flex-grow">
+                                    <p class="font-bold">Home Delivery</p>
+                                    <p class="text-sm text-gray-600">Get your items delivered to your address</p>
+                                </div>
+                                <span class="text-brand-gold font-bold">+R 100</span>
+                            </label>
+
+                            <label class="flex items-center p-4 border border-gray-300 rounded cursor-pointer hover:bg-gray-50 transition" id="delivery-pickup-label">
+                                <input type="radio" name="delivery_method" value="store_pickup" class="mr-3 w-4 h-4" onchange="toggleDeliverySection()">
+                                <div class="flex-grow">
+                                    <p class="font-bold">Store Pickup</p>
+                                    <p class="text-sm text-gray-600">Collect your items from our physical store</p>
+                                </div>
+                                <span class="text-brand-gold font-bold">Free</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Contact Information -->
+                    <div class="bg-white p-6 shadow-md rounded-sm border border-gray-100">
+                        <h2 class="section-title">Contact Information</h2>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Full Name *</label>
+                                <input type="text" id="full_name" name="full_name" class="input-field" placeholder="Enter your full name" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Email Address *</label>
+                                <input type="email" id="email" name="email" class="input-field" placeholder="example@email.com" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Phone Number *</label>
+                                <input type="tel" id="phone" name="phone" class="input-field" placeholder="+27 (10 digits)" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Delivery Address Section -->
+                    <div id="delivery-section" class="bg-white p-6 shadow-md rounded-sm border border-gray-100">
+                        <h2 class="section-title">Delivery Address</h2>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Street Address *</label>
+                                <input type="text" id="street_address" name="street_address" class="input-field" placeholder="Street address" required>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">City/Town *</label>
+                                    <input type="text" id="city" name="city" class="input-field" placeholder="City/Town" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Province *</label>
+                                    <select id="province" name="province" class="input-field" required>
+                                        <option value="">Select Province</option>
+                                        <option value="Eastern Cape">Eastern Cape</option>
+                                        <option value="Free State">Free State</option>
+                                        <option value="Gauteng">Gauteng</option>
+                                        <option value="KwaZulu-Natal">KwaZulu-Natal</option>
+                                        <option value="Limpopo">Limpopo</option>
+                                        <option value="Mpumalanga">Mpumalanga</option>
+                                        <option value="Northern Cape">Northern Cape</option>
+                                        <option value="North West">North West</option>
+                                        <option value="Western Cape">Western Cape</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Postal Code *</label>
+                                    <input type="text" id="postal_code" name="postal_code" class="input-field" placeholder="Postal code" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Country *</label>
+                                    <input type="text" id="country" name="country" class="input-field" value="South Africa" readonly>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Special Instructions (Optional)</label>
+                                <textarea id="delivery_notes" name="delivery_notes" class="input-field" rows="3" placeholder="E.g., gate code, building name, etc."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Store Pickup Information -->
+                    <div id="pickup-section" class="hidden bg-blue-50 p-6 rounded-sm border border-blue-200">
+                        <h2 class="section-title text-blue-900">Store Pickup Information</h2>
+                        
+                        <div class="space-y-3 text-gray-700">
+                            <div class="flex items-start">
+                                <i class="fa-solid fa-map-marker-alt text-brand-gold mt-1 mr-3"></i>
+                                <div>
+                                    <p class="font-bold">Our Physical Store</p>
+                                    <p id="store-address"></p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fa-solid fa-clock text-brand-gold mt-1 mr-3"></i>
+                                <div>
+                                    <p class="font-bold">Business Hours</p>
+                                    <p id="store-hours"></p>
+                                </div>
+                            </div>
+                            <div class="flex items-start">
+                                <i class="fa-solid fa-phone text-brand-gold mt-1 mr-3"></i>
+                                <div>
+                                    <p class="font-bold">Contact</p>
+                                    <p id="store-phone"></p>
+                                </div>
+                            </div>
+                            <div class="bg-white p-4 rounded mt-4 text-sm">
+                                <p class="font-bold mb-2">Order Ready For Pickup</p>
+                                <p>Your order will be ready within <strong>2-3 business days</strong>. We will contact you via phone/email when your items are ready to collect.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+
+            <!-- Order Summary Sidebar -->
+            <div class="lg:w-1/3">
+                <div class="bg-white p-6 shadow-md rounded-sm border border-gray-100 sticky top-24">
+                    <h2 class="text-xl font-bold mb-6 border-b pb-4">Order Summary</h2>
+                    
+                    <div id="order-items" class="space-y-3 mb-6 max-h-64 overflow-y-auto">
+                        <!-- Items will be populated by JavaScript -->
+                    </div>
+
+                    <div class="space-y-3 mb-6 pb-6 border-b">
+                        <div class="flex justify-between text-gray-600">
+                            <span>Subtotal</span>
+                            <span id="summary-subtotal">R 0.00</span>
+                        </div>
+                        <div class="flex justify-between text-gray-600">
+                            <span id="summary-shipping-label">Shipping</span>
+                            <span id="summary-shipping">R 100.00</span>
+                        </div>
+                        <div class="flex justify-between font-bold text-xl">
+                            <span>Total</span>
+                            <span id="summary-total" class="text-brand-gold">R 0.00</span>
+                        </div>
+                    </div>
+
+                    <h3 class="font-bold mb-4">Payment Method</h3>
+                    <div class="space-y-3 mb-8">
+                        <label class="flex items-center p-3 border rounded cursor-pointer hover:border-brand-gold transition">
+                            <input type="radio" name="payment" value="card" class="mr-3" checked>
+                            <span class="text-sm font-medium flex-grow">Credit/Debit Card</span>
+                            <i class="fa-solid fa-credit-card text-gray-400"></i>
+                        </label>
+                        <label class="flex items-center p-3 border rounded cursor-pointer hover:border-brand-gold transition">
+                            <input type="radio" name="payment" value="snap" class="mr-3">
+                            <span class="text-sm font-medium flex-grow">SnapScan / Scan to Pay</span>
+                            <i class="fa-solid fa-qrcode text-gray-400"></i>
+                        </label>
+                        <label class="flex items-center p-3 border rounded cursor-pointer hover:border-brand-gold transition">
+                            <input type="radio" name="payment" value="eft" class="mr-3">
+                            <span class="text-sm font-medium flex-grow">EFT Transfer</span>
+                            <i class="fa-solid fa-building-columns text-gray-400"></i>
+                        </label>
+                    </div>
+
+                    <button onclick="completeCheckout()" class="w-full bg-brand-gold text-white py-4 font-bold uppercase tracking-widest hover:bg-yellow-600 transition shadow-lg">
+                        Complete Payment
+                    </button>
+
+                    <button onclick="history.back()" class="w-full mt-3 bg-gray-200 text-gray-800 py-3 font-bold rounded hover:bg-gray-300 transition">
+                        Back
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <a href="https://wa.me/27635617298?text=Hello%20Africhic%20Garments,%20I%20have%20a%20question%20about%20my%20order..." 
+       target="_blank" 
+       class="fixed bottom-6 right-6 bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform z-[100] flex items-center justify-center">
+        <i class="fa-brands fa-whatsapp text-3xl"></i>
+    </a>
+
+    <script>
+        // Store details (Update with your actual store info)
+        const STORE_INFO = {
+            address: "654 Borzoi Street, Garsfontein Ext 10, Pretoria",
+            hours: "Monday - Friday: 9AM - 6PM | Saturday: 10AM - 4PM | Sunday: Closed",
+            phone: "+27635617298"
+        };
+
+        function initializeCheckout() {
+            // Optional authentication - don't force redirect
+            // User can checkout as guest or logged-in
+            const user = getCurrentUser();
+            
+            loadOrderSummary();
+            loadStoreInfo();
+            updateDeliverySection();
+            
+            // Pre-fill user information if logged in
+            if (user) {
+                prefillUserInfo(user);
+            }
+        }
+
+        function prefillUserInfo(user) {
+            // Pre-fill customer name and email from authenticated user
+            const nameInput = document.getElementById('full_name');
+            const emailInput = document.getElementById('email');
+            
+            if (nameInput && !nameInput.value) {
+                nameInput.value = user.displayName || user.email.split('@')[0];
+            }
+            if (emailInput && !emailInput.value) {
+                emailInput.value = user.email;
+            }
+        }
+
+        function loadStoreInfo() {
+            document.getElementById('store-address').textContent = STORE_INFO.address;
+            document.getElementById('store-hours').textContent = STORE_INFO.hours;
+            document.getElementById('store-phone').textContent = STORE_INFO.phone;
+        }
+
+        function loadOrderSummary() {
+            const cartItems = JSON.parse(localStorage.getItem('africhic-cart')) || [];
+            const container = document.getElementById('order-items');
+            
+            let subtotal = 0;
+            container.innerHTML = '';
+
+            cartItems.forEach(item => {
+                subtotal += item.price;
+                container.innerHTML += `
+                    <div class="flex justify-between text-sm py-2 border-b">
+                        <span>${item.name}</span>
+                        <span class="font-medium">R ${item.price.toFixed(2)}</span>
+                    </div>
+                `;
+            });
+
+            updateSummaryTotals(subtotal);
+        }
+
+        function updateSummaryTotals(subtotal) {
+            const isPickup = document.querySelector('input[name="delivery_method"]:checked').value === 'store_pickup';
+            const shippingCost = isPickup ? 0 : 100;
+            const total = subtotal + shippingCost;
+
+            document.getElementById('summary-subtotal').textContent = `R ${subtotal.toFixed(2)}`;
+            document.getElementById('summary-shipping').textContent = `R ${shippingCost.toFixed(2)}`;
+            document.getElementById('summary-total').textContent = `R ${total.toFixed(2)}`;
+            document.getElementById('summary-shipping-label').textContent = isPickup ? 'Store Pickup' : 'Shipping';
+        }
+
+        function toggleDeliverySection() {
+            const isPickup = document.querySelector('input[name="delivery_method"]:checked').value === 'store_pickup';
+            
+            document.getElementById('delivery-section').classList.toggle('hidden', isPickup);
+            document.getElementById('pickup-section').classList.toggle('hidden', !isPickup);
+
+            // Update required fields
+            const deliveryInputs = document.getElementById('delivery-section').querySelectorAll('input[required], select[required], textarea[required]');
+            deliveryInputs.forEach(input => {
+                input.required = !isPickup;
+            });
+
+            const cartItems = JSON.parse(localStorage.getItem('africhic-cart')) || [];
+            const subtotal = cartItems.reduce((sum, item) => sum + item.price, 0);
+            updateSummaryTotals(subtotal);
+        }
+
+        function updateDeliverySection() {
+            const isPickup = document.querySelector('input[name="delivery_method"]:checked').value === 'store_pickup';
+            if (isPickup) {
+                toggleDeliverySection();
+            }
+        }
+
+        function getCheckoutData() {
+            const formData = {
+                full_name: document.getElementById('full_name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                delivery_method: document.querySelector('input[name="delivery_method"]:checked').value,
+                payment_method: document.querySelector('input[name="payment"]:checked').value
+            };
+
+            if (formData.delivery_method === 'home_delivery') {
+                formData.address = {
+                    street: document.getElementById('street_address').value,
+                    city: document.getElementById('city').value,
+                    province: document.getElementById('province').value,
+                    postal_code: document.getElementById('postal_code').value,
+                    country: document.getElementById('country').value,
+                    delivery_notes: document.getElementById('delivery_notes').value
+                };
+            }
+
+            return formData;
+        }
+
+        function validateCheckout() {
+            const fullName = document.getElementById('full_name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const isPickup = document.querySelector('input[name="delivery_method"]:checked').value === 'store_pickup';
+
+            if (!fullName || !email || !phone) {
+                alert('Please fill in all contact information.');
+                return false;
+            }
+
+            if (!isPickup) {
+                const street = document.getElementById('street_address').value.trim();
+                const city = document.getElementById('city').value.trim();
+                const province = document.getElementById('province').value;
+                const postal = document.getElementById('postal_code').value.trim();
+
+                if (!street || !city || !province || !postal) {
+                    alert('Please fill in all delivery address fields.');
+                    return false;
+                }
+            }
+
+            // Validate stock availability
+            const cartItems = JSON.parse(localStorage.getItem('africhic-cart')) || [];
+            const products = JSON.parse(localStorage.getItem('africhic-products')) || [];
+            
+            for (let cartItem of cartItems) {
+                const product = products.find(p => p.id === cartItem.id);
+                if (!product || !product.stock || product.stock <= 0) {
+                    alert(`Sorry, "${cartItem.name}" is out of stock. Please remove it from your cart.`);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        function completeCheckout() {
+            // Disable button to prevent double submission
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+
+            if (!validateCheckout()) {
+                btn.disabled = false;
+                btn.textContent = 'Complete Payment';
+                return;
+            }
+
+            const checkoutData = getCheckoutData();
+            const cartItems = JSON.parse(localStorage.getItem('africhic-cart')) || [];
+            
+            if (cartItems.length === 0) {
+                alert("Your bag is empty!");
+                btn.disabled = false;
+                btn.textContent = 'Complete Payment';
+                return;
+            }
+
+            // Save checkout data
+            localStorage.setItem('africhic-checkout', JSON.stringify(checkoutData));
+
+            // Calculate total
+            const subtotal = cartItems.reduce((sum, item) => sum + item.price, 0);
+            const shippingCost = checkoutData.delivery_method === 'store_pickup' ? 0 : 100;
+            const totalAmount = (subtotal + shippingCost) * 100; // Convert to cents for Paystack
+
+            // Process payment based on method selected
+            const paymentMethod = checkoutData.payment_method;
+
+            if (paymentMethod === 'card') {
+                processCardPayment(checkoutData.email, totalAmount, checkoutData);
+            } else if (paymentMethod === 'snap') {
+                processSnapScanPayment(checkoutData);
+            } else if (paymentMethod === 'eft') {
+                processEFTPayment(checkoutData);
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Complete Payment';
+        }
+
+        function processCardPayment(email, totalAmount, checkoutData) {
+            let handler = PaystackPop.setup({
+                key: 'pk_test_b76c0fe1dc1392141c410ccb4439839a4c34d63d', // REPLACE WITH YOUR PUBLIC KEY
+                email: email,
+                amount: totalAmount,
+                currency: "ZAR",
+                ref: 'AFR-' + Math.floor((Math.random() * 1000000000) + 1),
+                onClose: function(){
+                    console.log('Payment window closed.');
+                },
+                callback: function(response){
+                    // Order saved on successful payment
+                    saveOrderData(checkoutData, 'completed');
+                    alert('✓ Payment successful! Your order has been submitted.\nReference: ' + response.reference + '\n\nYou will receive a confirmation email shortly.');
+                    localStorage.removeItem('africhic-cart');
+                    localStorage.removeItem('africhic-checkout');
+                    window.location.href = 'orders.html';
+                }
+            });
+
+            handler.openIframe();
+        }
+
+        function processSnapScanPayment(checkoutData) {
+            const cartItems = JSON.parse(localStorage.getItem('africhic-cart')) || [];
+            const subtotal = cartItems.reduce((sum, item) => sum + item.price, 0);
+            const shippingCost = checkoutData.delivery_method === 'store_pickup' ? 0 : 100;
+            const total = subtotal + shippingCost;
+
+            // Save order as pending
+            saveOrderData(checkoutData, 'pending_payment');
+
+            const message = `✓ Order Received!\n\nTotal: R${total.toFixed(2)}\nPayment Method: SnapScan\n\nPlease scan the code or send payment via SnapScan.\n\nContact: ${checkoutData.phone}\n\nWe'll confirm your order within 24 hours.`;
+            
+            window.open(`https://wa.me/27635617298?text=${encodeURIComponent(message)}`, '_blank');
+            
+            alert('✓ Order submitted! Please complete payment via SnapScan.\n\nA WhatsApp message has been sent with payment details.');
+            localStorage.removeItem('africhic-cart');
+            localStorage.removeItem('africhic-checkout');
+            window.location.href = 'orders.html';
+        }
+
+        function processEFTPayment(checkoutData) {
+            const cartItems = JSON.parse(localStorage.getItem('africhic-cart')) || [];
+            const subtotal = cartItems.reduce((sum, item) => sum + item.price, 0);
+            const shippingCost = checkoutData.delivery_method === 'store_pickup' ? 0 : 100;
+            const total = subtotal + shippingCost;
+
+            // Save order as pending
+            saveOrderData(checkoutData, 'pending_payment');
+
+            const message = `✓ Order Received!\n\nTotal: R${total.toFixed(2)}\nPayment Method: EFT Transfer\n\nPlease transfer funds to the account details below:\n\nContact: ${checkoutData.phone}\n\nWe'll confirm receipt within 24 hours.`;
+            
+            window.open(`https://wa.me/27635617298?text=${encodeURIComponent(message)}`, '_blank');
+            
+            alert('✓ Order submitted! Please complete payment via EFT Transfer.\n\nBank details will be sent to you via WhatsApp.');
+            localStorage.removeItem('africhic-cart');
+            localStorage.removeItem('africhic-checkout');
+            window.location.href = 'orders.html';
+        }
+
+        function saveOrderData(checkoutData, status = 'completed') {
+            const cartItems = JSON.parse(localStorage.getItem('africhic-cart')) || [];
+            const subtotal = cartItems.reduce((sum, item) => sum + item.price, 0);
+            const shippingCost = checkoutData.delivery_method === 'store_pickup' ? 0 : 100;
+            const total = subtotal + shippingCost;
+
+            const order = {
+                customer_name: checkoutData.full_name,
+                customer_email: checkoutData.email,
+                customer_phone: checkoutData.phone,
+                delivery_method: checkoutData.delivery_method,
+                delivery_address: checkoutData.address || null,
+                items: cartItems,
+                subtotal: subtotal,
+                shipping: shippingCost,
+                total: total,
+                payment_method: checkoutData.payment_method,
+                status: status
+            };
+
+            // Use OrderManager to save order and notify admin
+            orderManager.saveOrder(order).then(result => {
+                console.log('✓ Order saved and admin notified:', result.orderId);
+                
+                // Also save to localStorage as backup
+                let orders = JSON.parse(localStorage.getItem('africhic-orders')) || [];
+                orders.push({
+                    id: result.orderId,
+                    date: new Date().toLocaleString(),
+                    ...order
+                });
+                localStorage.setItem('africhic-orders', JSON.stringify(orders));
+                
+                // Send admin push notification
+                orderManager.sendAdminNotification({
+                    id: result.orderId,
+                    customer_name: order.customer_name,
+                    items: order.items,
+                    total: order.total
+                });
+            }).catch(err => {
+                console.error('Error saving order:', err);
+            });
+
+            // Update stock for completed orders only
+            if (status === 'completed') {
+                updateStockAfterOrder(cartItems);
+            }
+        }
+
+        function updateStockAfterOrder(cartItems) {
+            let products = JSON.parse(localStorage.getItem('africhic-products')) || [];
+            
+            // Count items by product ID
+            const itemCounts = {};
+            cartItems.forEach(item => {
+                itemCounts[item.id] = (itemCounts[item.id] || 0) + 1;
+            });
+
+            // Update stock for each product
+            products.forEach(product => {
+                if (itemCounts[product.id]) {
+                    product.stock = Math.max(0, (product.stock || 0) - itemCounts[product.id]);
+                }
+            });
+
+            localStorage.setItem('africhic-products', JSON.stringify(products));
+            
+            // Trigger real-time update event for shop page
+            window.dispatchEvent(new CustomEvent('productsUpdated', { 
+                detail: { products: products }
+            }));
+        }
+
+        // Initialize on page load
+        initializeCheckout();
+    </script>
+
+    <footer class="bg-zinc-900 text-white py-12 mt-12">
+        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+                <h4 class="text-brand-gold font-bold mb-4 uppercase">Africhic Garments</h4>
+                <p class="text-gray-400 text-sm">Handcrafted African print clothing for every occasion. Quality fabrics, exceptional designs.</p>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4 uppercase text-sm">Shop</h4>
+                <ul class="text-gray-400 space-y-2 text-sm">
+                    <li><a href="shop.html" class="hover:text-brand-gold transition">Shop All</a></li>
+                    <li><a href="shop.html?cat=ladies" class="hover:text-brand-gold transition">Ladies Collection</a></li>
+                    <li><a href="shop.html?cat=men" class="hover:text-brand-gold transition">Men's Collection</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4 uppercase text-sm">Account</h4>
+                <ul class="text-gray-400 space-y-2 text-sm">
+                    <li><a href="orders.html" class="hover:text-brand-gold transition">Order History</a></li>
+                    <li><a href="cart.html" class="hover:text-brand-gold transition">Shopping Cart</a></li>
+                    <li><a href="login.html" class="hover:text-brand-gold transition">Login</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4 uppercase text-sm">Contact</h4>
+                <p class="text-gray-400 text-sm mb-3">
+                    <a href="https://wa.me/27635617298" target="_blank" class="hover:text-brand-gold transition flex items-center gap-2">
+                        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                    </a>
+                </p>
+                <p class="text-gray-400 text-sm">Follow us on social media for updates and new collections.</p>
+            </div>
+        </div>
+        
+        <div class="max-w-7xl mx-auto px-6 border-t border-gray-700 mt-8 pt-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <p class="text-gray-500 text-sm">© 2024 Africhic Garments. All rights reserved.</p>
+                <div class="flex space-x-4 text-gray-500 mt-4 md:mt-0">
+                    <i class="fa-brands fa-cc-visa hover:text-brand-gold cursor-pointer transition"></i>
+                    <i class="fa-brands fa-cc-mastercard hover:text-brand-gold cursor-pointer transition"></i>
+                    <i class="fa-brands fa-cc-paypal hover:text-brand-gold cursor-pointer transition"></i>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <a href="https://wa.me/27635617298?text=Hello%20Africhic%20Garments,%20I%20have%20a%20question%20about%20an%20item..." 
+       target="_blank" 
+       class="fixed bottom-6 right-6 bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform z-[100] flex items-center justify-center">
+        <i class="fa-brands fa-whatsapp text-3xl"></i>
+        <span class="absolute right-full mr-3 bg-white text-gray-800 text-xs font-bold px-2 py-1 rounded shadow-sm whitespace-nowrap opacity-0 hover:opacity-100 transition-opacity">
+            Chat with us
+        </span>
+    </a>
+
+</body>
+</html>

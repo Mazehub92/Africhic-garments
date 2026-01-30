@@ -1,0 +1,13 @@
+# Netlify redirect rules for single-page application
+
+# Handle all non-file requests to index.html for SPA routing
+/*    /index.html   200
+
+# Ensure images are served correctly
+/images/*  /:splat  200
+
+# Ensure scripts are served correctly
+/js/*  /:splat  200
+
+# Ensure styles are served correctly
+/styles/*  /:splat  200

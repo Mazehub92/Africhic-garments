@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order History | Africhic Garments</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="firestore-sync.js"></script>
+    <script src="auth.js"></script>
+    <script src="session-timeout.js"></script>
+    <script src="user-profile.js"></script>
+    <script src="page-protection.js"></script>
+    <script src="modern-navbar.js"></script>
+    
+    <style>
+        :root { --brand-gold: #D4AF37; }
+        .text-brand-gold { color: #D4AF37; }
+        .bg-brand-gold { background-color: #D4AF37; }
+        .status-completed { background-color: #dcfce7; color: #166534; padding: 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: bold; }
+        .status-pending { background-color: #fef3c7; color: #92400e; padding: 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: bold; }
+        .status-failed { background-color: #fee2e2; color: #991b1b; padding: 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Modern Navigation Bar -->
+    <nav class="navbar sticky top-0 z-50" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border-bottom: 1px solid #e0e0e0; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Brand Logo -->
+                <a href="index.html" style="display: flex; flex-direction: column; gap: 2px; text-decoration: none; transition: all 0.3s ease; color: #D4AF37;">
+                    <span style="font-size: 1.5rem; font-weight: 700; letter-spacing: 2px;">AFRICHIC</span>
+                    <span style="font-size: 0.65rem; letter-spacing: 1.5px; color: #7f8c8d; font-weight: 600;">GARMENTS</span>
+                </a>
+
+                <!-- Desktop Links -->
+                <div class="hidden md:flex space-x-8">
+                    <a href="shop.html" style="font-size: 0.95rem; color: #2c3e50; text-decoration: none; transition: all 0.3s ease;" class="hover:text-brand-gold">Shop</a>
+                    <a href="profile.html" style="font-size: 0.95rem; color: #2c3e50; text-decoration: none; transition: all 0.3s ease;" class="hover:text-brand-gold">Profile</a>
+                </div>
+
+                <!-- Right Side Icons -->
+                <div class="flex items-center space-x-4 md:space-x-6">
+                    <!-- Cart Icon -->
+                    <a href="cart.html" style="font-size: 1.2rem; color: #2c3e50; transition: all 0.3s ease; position: relative;" class="hover:text-brand-gold">
+                        <i class="fas fa-shopping-bag"></i>
+                    </a>
+
+                    <!-- Mobile Menu Button -->
+                    <button id="mobile-menu-btn" class="md:hidden nav-icon" style="font-size: 1.2rem; transition: all 0.3s ease; color: #2c3e50;">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="md:hidden hidden border-t border-gray-200 bg-white py-2">
+                <a href="shop.html" style="display: block; padding: 12px 16px; color: #2c3e50; text-decoration: none; font-size: 0.95rem; font-weight: 500; border-left: 4px solid transparent; transition: all 0.3s ease;" class="hover:bg-gray-100 hover:text-brand-gold hover:border-l-brand-gold">
+                    <i class="fas fa-shopping-bag mr-2"></i> Shop
+                </a>
+                <a href="profile.html" style="display: block; padding: 12px 16px; color: #2c3e50; text-decoration: none; font-size: 0.95rem; font-weight: 500; border-left: 4px solid transparent; transition: all 0.3s ease;" class="hover:bg-gray-100 hover:text-brand-gold hover:border-l-brand-gold">
+                    <i class="fas fa-user mr-2"></i> Profile
+                </a>
+                <a href="cart.html" style="display: block; padding: 12px 16px; color: #2c3e50; text-decoration: none; font-size: 0.95rem; font-weight: 500; border-left: 4px solid transparent; transition: all 0.3s ease;" class="hover:bg-gray-100 hover:text-brand-gold hover:border-l-brand-gold">
+                    <i class="fas fa-shopping-cart mr-2"></i> Cart
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto px-4 py-10">
+        <h1 class="text-3xl font-bold mb-10">Order History</h1>
+
+        <div id="orders-container" class="space-y-6">
+            <!-- Orders will be populated here -->
+        </div>
+
+        <div id="no-orders" class="hidden text-center py-20 bg-white rounded-sm shadow-md">
+            <i class="fa-solid fa-inbox text-5xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500 text-lg">No orders found.</p>
+            <a href="shop.html" class="text-brand-gold font-bold mt-4 inline-block">Start Shopping</a>
+        </div>
+    </div>
+
+    <a href="https://wa.me/27635617298?text=Hello%20Africhic%20Garments,%20I%20have%20a%20question%20about%20my%20order..." 
+       target="_blank" 
+       class="fixed bottom-6 right-6 bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform z-[100] flex items-center justify-center">
+        <i class="fa-brands fa-whatsapp text-3xl"></i>
+    </a>
+
+    <script>
+        function loadOrders() {
+            const container = document.getElementById('orders-container');
+            const noOrders = document.getElementById('no-orders');
+
+            // Try to load from Firestore first
+            if (window.firestoreSync && window.firestoreSync.initialized) {
+                firestoreSync.getOrders().then(orders => {
+                    if (!orders || orders.length === 0) {
+                        noOrders.classList.remove('hidden');
+                        container.innerHTML = '';
+                        return;
+                    }
+                    displayOrdersInUI(orders);
+                    
+                    // Set up real-time listener for live updates
+                    firestoreSync.listenToOrders((updatedOrders) => {
+                        displayOrdersInUI(updatedOrders);
+                        console.log('✓ Orders updated in real-time from Firestore');
+                    });
+                });
+            } else {
+                // Fallback to localStorage
+                const orders = JSON.parse(localStorage.getItem('africhic-orders')) || [];
+                if (orders.length === 0) {
+                    noOrders.classList.remove('hidden');
+                    container.innerHTML = '';
+                    return;
+                }
+                displayOrdersInUI(orders);
+            }
+        }
+
+        function displayOrdersInUI(orders) {
+            const container = document.getElementById('orders-container');
+            const noOrders = document.getElementById('no-orders');
+
+            if (!orders || orders.length === 0) {
+                noOrders.classList.remove('hidden');
+                container.innerHTML = '';
+                return;
+            }
+
+            noOrders.classList.add('hidden');
+            container.innerHTML = '';
+
+            // Display orders in reverse chronological order
+            orders.reverse().forEach(order => {
+                const statusClass = `status-${order.status}`;
+                const deliveryInfo = order.delivery_method === 'home_delivery' 
+                    ? `<p class="text-sm"><strong>Delivery to:</strong> ${order.delivery_address?.street}, ${order.delivery_address?.city}, ${order.delivery_address?.province}</p>`
+                    : `<p class="text-sm"><strong>Pickup:</strong> From our physical store</p>`;
+
+                const itemsHtml = order.items.map(item => 
+                    `<li class="flex justify-between text-sm py-1">
+                        <span>
+                            ${item.name}
+                            ${item.size ? ` <span class="text-gray-600">(Size: ${item.size}${item.colour ? `, ${item.colour}` : ''})</span>` : ''}
+                        </span>
+                        <span>R ${item.price.toFixed(2)}</span>
+                    </li>`
+                ).join('');
+
+                let trackingHtml = '';
+                if (order.tracking_info) {
+                    trackingHtml = `
+                        <div class="bg-blue-50 border-l-4 border-blue-600 p-4 rounded-sm mb-4">
+                            <p class="font-bold text-blue-900 mb-2"><i class="fa-solid fa-map mr-2"></i>Your Parcel is in Transit</p>
+                            <p class="text-sm text-blue-900"><strong>Tracking Number:</strong> <span class="font-mono">${order.tracking_info.tracking_number}</span></p>
+                            <p class="text-sm text-blue-900"><strong>Carrier:</strong> ${order.tracking_info.carrier}</p>
+                            ${order.tracking_info.delivery_date ? `<p class="text-sm text-blue-900"><strong>Est. Delivery:</strong> ${order.tracking_info.delivery_date}</p>` : ''}
+                            ${order.tracking_info.message ? `<p class="text-sm text-blue-900 mt-2"><strong>Update:</strong> ${order.tracking_info.message}</p>` : ''}
+                        </div>
+                    `;
+                }
+
+                let collectionHtml = '';
+                if (order.collection_info) {
+                    collectionHtml = `
+                        <div class="bg-green-50 border-l-4 border-green-600 p-4 rounded-sm mb-4">
+                            <p class="font-bold text-green-900 mb-2"><i class="fa-solid fa-check-circle mr-2"></i>Your Parcel is Ready!</p>
+                            <p class="text-sm text-green-900"><strong>Ready Date:</strong> ${order.collection_info.ready_date}</p>
+                            <p class="text-sm text-green-900"><strong>Store Hours:</strong></p>
+                            <ul class="text-sm text-green-900 ml-4 mt-1">
+                                <li><strong>Mon-Fri:</strong> ${order.collection_info.weekday_hours}</li>
+                                <li><strong>Saturday:</strong> ${order.collection_info.saturday_hours}</li>
+                                <li><strong>Sunday:</strong> ${order.collection_info.sunday_hours}</li>
+                            </ul>
+                            ${order.collection_info.message ? `<p class="text-sm text-green-900 mt-2"><strong>Instructions:</strong> ${order.collection_info.message}</p>` : ''}
+                        </div>
+                    `;
+                }
+
+                container.innerHTML += `
+                    <div class="bg-white p-6 rounded-sm shadow-md border border-gray-100">
+                        <div class="flex justify-between items-start mb-4 pb-4 border-b">
+                            <div>
+                                <p class="text-sm text-gray-600">Order ID</p>
+                                <p class="font-bold text-lg">${order.id}</p>
+                                <p class="text-sm text-gray-500 mt-1">${order.date}</p>
+                            </div>
+                            <span class="${statusClass}">${order.status.toUpperCase()}</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                            <div>
+                                <p class="text-sm text-gray-600 mb-2"><i class="fa-solid fa-user mr-2"></i>Customer</p>
+                                <p class="font-medium">${order.customer_name}</p>
+                                <p class="text-sm text-gray-600">${order.customer_email}</p>
+                                <p class="text-sm text-gray-600">${order.customer_phone}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600 mb-2"><i class="fa-solid fa-truck mr-2"></i>Delivery</p>
+                                ${deliveryInfo}
+                                <p class="text-sm text-gray-600 mt-2"><strong>Payment:</strong> ${order.payment_method}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600 mb-2"><i class="fa-solid fa-receipt mr-2"></i>Summary</p>
+                                <p class="text-sm">Subtotal: R ${order.subtotal.toFixed(2)}</p>
+                                <p class="text-sm">Shipping: R ${order.shipping.toFixed(2)}</p>
+                                <p class="font-bold text-lg text-brand-gold mt-2">Total: R ${order.total.toFixed(2)}</p>
+                            </div>
+                        </div>
+
+                        ${trackingHtml}
+                        ${collectionHtml}
+
+                        <div class="bg-gray-50 p-4 rounded-sm mb-4">
+                            <p class="font-bold text-sm mb-2">Items Ordered</p>
+                            <ul class="space-y-1">
+                                ${itemsHtml}
+                            </ul>
+                        </div>
+
+                        <div class="flex space-x-3">
+                            <button onclick="printOrder('${order.id}')" class="flex-1 bg-brand-gold text-white py-2 px-4 rounded font-medium hover:bg-yellow-600 transition flex items-center justify-center">
+                                <i class="fa-solid fa-print mr-2"></i> Print Invoice
+                            </button>
+                            <button onclick="contactAboutOrder('${order.id}')" class="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded font-medium hover:bg-gray-300 transition flex items-center justify-center">
+                                <i class="fa-brands fa-whatsapp mr-2"></i> Contact
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function printOrder(orderId) {
+            const orders = JSON.parse(localStorage.getItem('africhic-orders')) || [];
+            const order = orders.find(o => o.id === orderId);
+
+            if (!order) {
+                alert('Order not found');
+                return;
+            }
+
+            const printWindow = window.open('', '', 'height=600,width=800');
+            const itemsHtml = order.items.map(item => 
+                `<tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #ddd;">
+                        ${item.name}
+                        ${item.size ? `<br/><small style="color: #666;">Size: ${item.size}${item.colour ? `, ${item.colour}` : ''}</small>` : ''}
+                    </td>
+                    <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">R ${item.price.toFixed(2)}</td>
+                </tr>`
+            ).join('');
+
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Invoice - ${order.id}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 40px; }
+                        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #D4AF37; padding-bottom: 20px; }
+                        .header h1 { color: #D4AF37; margin: 0; }
+                        .section { margin-bottom: 20px; }
+                        .section h2 { color: #333; font-size: 14px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                        .total { font-weight: bold; font-size: 16px; color: #D4AF37; }
+                        .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>AFRICHIC GARMENTS</h1>
+                        <p>Invoice</p>
+                    </div>
+
+                    <div class="section">
+                        <h2>Order Details</h2>
+                        <p><strong>Order ID:</strong> ${order.id}</p>
+                        <p><strong>Date:</strong> ${order.date}</p>
+                        <p><strong>Status:</strong> ${order.status.toUpperCase()}</p>
+                    </div>
+
+                    <div class="section">
+                        <h2>Customer Information</h2>
+                        <p><strong>Name:</strong> ${order.customer_name}</p>
+                        <p><strong>Email:</strong> ${order.customer_email}</p>
+                        <p><strong>Phone:</strong> ${order.customer_phone}</p>
+                    </div>
+
+                    <div class="section">
+                        <h2>Delivery Information</h2>
+                        <p><strong>Method:</strong> ${order.delivery_method === 'home_delivery' ? 'Home Delivery' : 'Store Pickup'}</p>
+                        ${order.delivery_method === 'home_delivery' ? `
+                            <p><strong>Address:</strong> ${order.delivery_address?.street}, ${order.delivery_address?.city}, ${order.delivery_address?.province} ${order.delivery_address?.postal_code}</p>
+                        ` : '<p>Collect from our physical store</p>'}
+                    </div>
+
+                    <div class="section">
+                        <h2>Items</h2>
+                        <table>
+                            <tr style="background-color: #f5f5f5;">
+                                <th style="padding: 8px; text-align: left;">Item</th>
+                                <th style="padding: 8px; text-align: right;">Price</th>
+                            </tr>
+                            ${itemsHtml}
+                            <tr style="background-color: #fefcf6;">
+                                <td style="padding: 8px;"><strong>Subtotal</strong></td>
+                                <td style="padding: 8px; text-align: right;"><strong>R ${order.subtotal.toFixed(2)}</strong></td>
+                            </tr>
+                            <tr style="background-color: #fefcf6;">
+                                <td style="padding: 8px;"><strong>Shipping</strong></td>
+                                <td style="padding: 8px; text-align: right;"><strong>R ${order.shipping.toFixed(2)}</strong></td>
+                            </tr>
+                            <tr style="background-color: #D4AF37; color: white;">
+                                <td style="padding: 8px;"><strong>TOTAL</strong></td>
+                                <td style="padding: 8px; text-align: right;"><strong>R ${order.total.toFixed(2)}</strong></td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="footer">
+                        <p>Thank you for shopping with AFRICHIC GARMENTS!</p>
+                        <p>For inquiries: WhatsApp +27635617298</p>
+                    </div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        function contactAboutOrder(orderId) {
+            const orders = JSON.parse(localStorage.getItem('africhic-orders')) || [];
+            const order = orders.find(o => o.id === orderId);
+
+            if (!order) {
+                alert('Order not found');
+                return;
+            }
+
+            const message = `Hi Africhic Garments, I have a question about my order ${order.id} placed on ${order.date}. Total: R${order.total.toFixed(2)}. Please help!`;
+            window.open(`https://wa.me/27635617298?text=${encodeURIComponent(message)}`, '_blank');
+        }
+
+        // Load orders on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Require authentication
+            requireAuth();
+            
+            loadOrders();
+            
+            // Set up storage listener for multi-tab sync
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'africhic-orders' && e.newValue) {
+                    try {
+                        loadOrders();
+                        console.log('✓ Orders synced from other tab/window');
+                    } catch (error) {
+                        console.error('Error syncing orders:', error);
+                    }
+                }
+            });
+        });
+    </script>
+
+    <footer class="bg-zinc-900 text-white py-12 mt-12">
+        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+                <h4 class="text-brand-gold font-bold mb-4 uppercase">Africhic Garments</h4>
+                <p class="text-gray-400 text-sm">Handcrafted African print clothing for every occasion. Quality fabrics, exceptional designs.</p>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4 uppercase text-sm">Shop</h4>
+                <ul class="text-gray-400 space-y-2 text-sm">
+                    <li><a href="shop.html" class="hover:text-brand-gold transition">Shop All</a></li>
+                    <li><a href="shop.html?cat=ladies" class="hover:text-brand-gold transition">Ladies Collection</a></li>
+                    <li><a href="shop.html?cat=men" class="hover:text-brand-gold transition">Men's Collection</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4 uppercase text-sm">Account</h4>
+                <ul class="text-gray-400 space-y-2 text-sm">
+                    <li><a href="orders.html" class="hover:text-brand-gold transition">Order History</a></li>
+                    <li><a href="cart.html" class="hover:text-brand-gold transition">Shopping Cart</a></li>
+                    <li><a href="login.html" class="hover:text-brand-gold transition">Login</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4 uppercase text-sm">Contact</h4>
+                <p class="text-gray-400 text-sm mb-3">
+                    <a href="https://wa.me/27635617298" target="_blank" class="hover:text-brand-gold transition flex items-center gap-2">
+                        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                    </a>
+                </p>
+                <p class="text-gray-400 text-sm">Follow us on social media for updates and new collections.</p>
+            </div>
+        </div>
+        
+        <div class="max-w-7xl mx-auto px-6 border-t border-gray-700 mt-8 pt-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <p class="text-gray-500 text-sm">© 2024 Africhic Garments. All rights reserved.</p>
+                <div class="flex space-x-4 text-gray-500 mt-4 md:mt-0">
+                    <i class="fa-brands fa-cc-visa hover:text-brand-gold cursor-pointer transition"></i>
+                    <i class="fa-brands fa-cc-mastercard hover:text-brand-gold cursor-pointer transition"></i>
+                    <i class="fa-brands fa-cc-paypal hover:text-brand-gold cursor-pointer transition"></i>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

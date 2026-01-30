@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Africhic Garments</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Production Configuration -->
+    <script src="production-config.js"></script>
+    <!-- Firebase Scripts - Multiple CDN sources with fallback -->
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-storage-compat.js"></script>
+    <!-- Firebase Initialization -->
+    <script>
+        // ========================================
+        // PRODUCTION MODE CONFIGURATION
+        // ========================================
+        
+        // IMPORTANT: Update these with your actual admin credentials
+        // These are used as fallback only - Firebase Auth is PRIMARY
+        const ADMIN_CREDENTIALS = {
+            'intemaze@gmail.com': 'africhic2024',
+            'admin@africhic.com': 'AfrichicAdmin123'
+        };
+
+        // ========================================
+        // PRODUCTION SETTINGS
+        // ========================================
+        const PRODUCTION_MODE = {
+            enabled: true,
+            useFirebaseAuthPrimary: true,  // Use Firebase Auth as primary authentication
+            requireAdminEmail: false,       // Set to true to require specific admin email
+            adminEmails: ['intemaze@gmail.com', 'admin@africhic.com'],
+            enableCloudSync: true,          // Enable cloud sync
+            logLevel: 'info'                // 'debug', 'info', 'warn', 'error'
+        };
+
+        // Global Firebase state
+        window.firebaseReady = false;
+        window.firebaseMode = 'firebase'; // Production: use Firebase first
+        window.currentAdminUser = null;
+        window.syncEnabled = false; // Cloud sync status
+        window.pendingSync = false; // Pending changes to sync
+        let firebaseInitialized = false;
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDDq_DgP_ST72HVYGQfm0AtjUOFgeUdM1I",
+            authDomain: "africhic-garments.firebaseapp.com",
+            projectId: "africhic-garments",
+            storageBucket: "africhic-garments.firebasestorage.app",
+            messagingSenderId: "877967489386",
+            appId: "1:877967489386:web:9ae436b5acba106c930d13",
+            measurementId: "G-CRE5H4XVLY"
+        };
+
+        // Initialize Firebase safely
+        function initializeFirebase() {
+            // Don't reinitialize
+            if (firebaseInitialized) {
+                console.log('[Firebase] Already initialized');
+                return;
+            }
+
+            console.log('[Firebase] Starting initialization in PRODUCTION MODE...');
+            console.log('[Firebase] Production Mode:', PRODUCTION_MODE);
+
+            // Check if Firebase is available
+            if (typeof firebase === 'undefined') {
+                console.warn('[Firebase] SDK not available, falling back to local auth');
+                window.firebaseMode = 'local';
+                window.firebaseReady = true;
+                updateStatusBox('⚠️ Local Auth Mode (Firebase SDK unavailable)', 'blue');
+                firebaseInitialized = true;
+                return;
+            }
+
+            try {
+                // Initialize Firebase app if not already done
+                if (firebase.apps.length === 0) {
+                    firebase.initializeApp(firebaseConfig);
+                    console.log('[Firebase] ✓ App initialized');
+                }
+
+                // Get references
+                window.auth = firebase.auth();
+                window.db = firebase.firestore();
+                window.storage = firebase.storage();
+                
+                // Set to Firebase mode for production
+                window.firebaseMode = PRODUCTION_MODE.useFirebaseAuthPrimary ? 'firebase' : 'local';
+                window.firebaseReady = true;
+                window.syncEnabled = PRODUCTION_MODE.enableCloudSync;
+                firebaseInitialized = true;
+                
+                console.log('[Firebase] ✓ Firebase initialized successfully');
+                console.log('[Firebase] Mode:', window.firebaseMode);
+                console.log('[Firebase] Cloud Sync:', window.syncEnabled);
+                updateStatusBox('✓ Firebase Connected - Production Mode Active', 'green');
+            } catch (error) {
+                console.error('[Firebase] Init error:', error.message);
+                console.log('[Firebase] Falling back to local authentication');
+                window.firebaseMode = 'local';
+                window.firebaseReady = true;
+                updateStatusBox('⚠️ Using Local Auth (Firebase error)', 'blue');
+                firebaseInitialized = true;
+            }
+        }
+
+        // Update UI status indicator
+        function updateStatusBox(message, color) {
+            const statusDiv = document.getElementById('firebase-status');
+            if (!statusDiv) return;
+
+            const colorMap = {
+                'green': { bg: '#dcfce7', text: '#166534' },
+                'blue': { bg: '#dbeafe', text: '#1e40af' },
+                'red': { bg: '#fee2e2', text: '#991b1b' }
+            };
+
+            const style = colorMap[color] || colorMap['blue'];
+            statusDiv.innerHTML = `<p style="margin: 0; color: ${style.text}; font-weight: bold;">${message}</p>`;
+            statusDiv.style.backgroundColor = style.bg;
+        }
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(initializeFirebase, 100);
+            });
+        } else {
+            setTimeout(initializeFirebase, 100);
+        }
+    </script>
+    <script src="auth.js"></script>
+    <script src="session-timeout.js"></script>
+    <script src="product-sync-manager.js"></script>
+    <script src="orders-manager.js"></script>
+    <style>
+        :root { --brand-gold: #D4AF37; }
+        .text-brand-gold { color: #D4AF37; }
+        .bg-brand-gold { background-color: #D4AF37; }
+        .stat-card { background: white; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1.5rem; border-left: 4px solid; }
+        .stat-card-primary { border-left-color: #D4AF37; }
+        .stat-card-success { border-left-color: #10b981; }
+        .stat-card-warning { border-left-color: #f59e0b; }
+        .stat-card-danger { border-left-color: #ef4444; }
+        .badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: bold; }
+        .badge-success { background-color: #dcfce7; color: #166534; }
+        .badge-warning { background-color: #fef3c7; color: #92400e; }
+        .badge-danger { background-color: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="w-full h-screen flex items-center justify-center bg-gray-900">
+        <div class="bg-white p-8 rounded-lg shadow-2xl max-w-sm w-full">
+            <h2 class="text-2xl font-bold mb-6 text-center text-brand-gold">Africhic Admin</h2>
+            <div id="firebase-status" class="text-center text-sm mb-4 p-2 rounded bg-blue-50 border border-blue-200" style="min-height: 30px; display: flex; align-items: center; justify-content: center;">
+                <p style="margin: 0; color: #1e40af;">⏳ Loading Firebase...</p>
+            </div>
+            <input type="email" id="admin-email" placeholder="Email" class="w-full border p-3 rounded mb-4" required>
+            <input type="password" id="admin-password" placeholder="Password" class="w-full border p-3 rounded mb-6" required>
+            <button id="login-btn" onclick="loginAdmin()" class="w-full bg-brand-gold text-white py-3 rounded font-bold hover:bg-yellow-600">Login</button>
+            <p class="text-center text-gray-500 text-sm mt-4">Use your Africhic admin credentials</p>
+            <p id="login-error" class="text-center text-red-500 text-sm mt-2 hidden"></p>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="admin-panel" class="hidden flex h-screen">
+        <!-- Sidebar Navigation -->
+        <div class="w-64 bg-zinc-900 h-screen sticky top-0 text-white p-6 overflow-y-auto">
+            <h1 class="text-xl font-bold tracking-widest text-brand-gold mb-10">AFRICHIC ADMIN</h1>
+            <nav class="space-y-2">
+                <button onclick="switchTab('dashboard')" class="nav-btn active w-full text-left block py-2.5 px-4 rounded bg-zinc-800 text-white transition">
+                    <i class="fa-solid fa-chart-line mr-2"></i> Dashboard
+                </button>
+                <button onclick="switchTab('inventory')" class="nav-btn w-full text-left block py-2.5 px-4 rounded text-gray-400 hover:bg-zinc-800 transition">
+                    <i class="fa-solid fa-box mr-2"></i> Inventory
+                </button>
+                <button onclick="window.location.href='admin-products.html'" class="nav-btn w-full text-left block py-2.5 px-4 rounded text-gray-400 hover:bg-zinc-800 transition">
+                    <i class="fa-solid fa-cube mr-2"></i> Products
+                </button>
+                <button onclick="window.location.href='admin-orders.html'" class="nav-btn w-full text-left block py-2.5 px-4 rounded text-gray-400 hover:bg-zinc-800 transition">
+                    <i class="fa-solid fa-receipt mr-2"></i> Orders
+                </button>
+                <button onclick="switchTab('analytics')" class="nav-btn w-full text-left block py-2.5 px-4 rounded text-gray-400 hover:bg-zinc-800 transition">
+                    <i class="fa-solid fa-chart-bar mr-2"></i> Analytics
+                </button>
+                <button onclick="switchTab('homepage')" class="nav-btn w-full text-left block py-2.5 px-4 rounded text-gray-400 hover:bg-zinc-800 transition">
+                    <i class="fa-solid fa-home mr-2"></i> Homepage
+                </button>
+                <hr class="my-6 border-zinc-700">
+                <a href="index.html" class="block py-2.5 px-4 rounded text-gray-400 hover:bg-zinc-800 transition">
+                    <i class="fa-solid fa-globe mr-2"></i> View Store
+                </a>
+                <button onclick="logoutAdmin()" class="block py-2.5 px-4 rounded text-gray-400 hover:bg-zinc-800 transition w-full text-left">
+                    <i class="fa-solid fa-sign-out-alt mr-2"></i> Logout
+                </button>
+            </nav>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 overflow-y-auto">
+            <div class="p-8">
+                <!-- Header -->
+                <div class="flex justify-between items-center mb-8">
+                    <div>
+                        <h2 class="text-3xl font-bold text-gray-800" id="page-title">Dashboard</h2>
+                        <p class="text-gray-500 text-sm mt-1" id="page-subtitle">Welcome back to your admin dashboard</p>
+                    </div>
+                    <button onclick="openProductModal()" class="bg-brand-gold text-white px-6 py-3 rounded-lg shadow hover:bg-yellow-600 transition hidden" id="add-product-btn">
+                        <i class="fa-solid fa-plus mr-2"></i> Add Product
+                    </button>
+                </div>
+
+                <!-- Dashboard Tab -->
+                <div id="dashboard-tab" class="tab-content">
+                    <!-- Dashboard Stats Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="stat-card stat-card-primary">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-600 text-sm">Total Products</p>
+                                    <p class="text-3xl font-bold text-gray-800 mt-2" id="stat-products">0</p>
+                                </div>
+                                <i class="fa-solid fa-box text-2xl text-brand-gold opacity-50"></i>
+                            </div>
+                        </div>
+
+                        <div class="stat-card stat-card-success">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-600 text-sm">Total Orders</p>
+                                    <p class="text-3xl font-bold text-gray-800 mt-2" id="stat-orders">0</p>
+                                </div>
+                                <i class="fa-solid fa-shopping-bag text-2xl text-green-500 opacity-50"></i>
+                            </div>
+                        </div>
+
+                        <div class="stat-card stat-card-warning">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-600 text-sm">Categories</p>
+                                    <p class="text-3xl font-bold text-gray-800 mt-2" id="stat-categories">0</p>
+                                </div>
+                                <i class="fa-solid fa-tags text-2xl text-yellow-500 opacity-50"></i>
+                            </div>
+                        </div>
+
+                        <div class="stat-card stat-card-danger">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-gray-600 text-sm">Low Stock Items</p>
+                                    <p class="text-3xl font-bold text-gray-800 mt-2" id="stat-low-stock">0</p>
+                                </div>
+                                <i class="fa-solid fa-exclamation text-2xl text-red-500 opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Revenue & Orders Overview -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-bold mb-4">Recent Orders</h3>
+                            <div id="recent-orders-list" class="space-y-3">
+                                <p class="text-gray-500">Loading orders...</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-bold mb-4">Top Products</h3>
+                            <div id="top-products-list" class="space-y-3">
+                                <p class="text-gray-500">Loading products...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inventory Tab -->
+                <div id="inventory-tab" class="tab-content hidden">
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-lg font-bold">Product Stock Levels</h3>
+                            <input type="text" id="inventory-search" placeholder="Search products..." class="px-4 py-2 border rounded-lg">
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50 border-b">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left">Product</th>
+                                        <th class="px-4 py-3 text-left">Category</th>
+                                        <th class="px-4 py-3 text-center">Price</th>
+                                        <th class="px-4 py-3 text-center">Colors</th>
+                                        <th class="px-4 py-3 text-center">Sizes</th>
+                                        <th class="px-4 py-3 text-center">Status</th>
+                                        <th class="px-4 py-3 text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventory-list">
+                                    <tr><td colspan="7" class="text-center py-4 text-gray-500">Loading inventory...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Products Tab -->
+                <div id="products-tab" class="tab-content hidden">
+                    <div class="mb-6 flex gap-4 flex-wrap">
+                        <input type="text" id="product-search" placeholder="Search products..." class="px-4 py-2 border rounded-lg flex-1 min-w-[250px]">
+                        <select id="category-filter" class="px-4 py-2 border rounded-lg">
+                            <option value="">All Categories</option>
+                            <option value="ladies-dresses">Ladies Dresses</option>
+                            <option value="ladies-pants">Ladies Pants</option>
+                            <option value="ladies-tops">Ladies Tops</option>
+                            <option value="men-shirts">Men's Shirts</option>
+                        </select>
+                        <button onclick="openProductModal()" class="bg-brand-gold text-white px-6 py-2 rounded-lg hover:bg-yellow-600 transition">
+                            <i class="fa-solid fa-plus mr-2"></i> Add New
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="products-grid">
+                        <div class="text-center py-8 text-gray-500">Loading products...</div>
+                    </div>
+                </div>
+
+                <!-- Orders Tab -->
+                <div id="orders-tab" class="tab-content hidden">
+                    <div class="mb-6 flex gap-4 flex-wrap">
+                        <input type="text" id="order-search" placeholder="Search by customer or order ID..." class="px-4 py-2 border rounded-lg flex-1 min-w-[250px]">
+                        <select id="order-status-filter" class="px-4 py-2 border rounded-lg">
+                            <option value="">All Status</option>
+                            <option value="completed">Completed</option>
+                            <option value="pending">Pending</option>
+                            <option value="failed">Failed</option>
+                        </select>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 border-b">
+                                <tr>
+                                    <th class="px-4 py-3 text-left">Order ID</th>
+                                    <th class="px-4 py-3 text-left">Customer</th>
+                                    <th class="px-4 py-3 text-left">Date</th>
+                                    <th class="px-4 py-3 text-center">Total</th>
+                                    <th class="px-4 py-3 text-center">Status</th>
+                                    <th class="px-4 py-3 text-center">Delivery</th>
+                                    <th class="px-4 py-3 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orders-list">
+                                <tr><td colspan="7" class="text-center py-4 text-gray-500">Loading orders...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Analytics Tab -->
+                <div id="analytics-tab" class="tab-content hidden">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-bold mb-4">Sales Summary</h3>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center pb-3 border-b">
+                                    <span class="text-gray-600">Total Revenue</span>
+                                    <span class="text-2xl font-bold text-brand-gold" id="total-revenue">R 0.00</span>
+                                </div>
+                                <div class="flex justify-between items-center pb-3 border-b">
+                                    <span class="text-gray-600">Completed Orders</span>
+                                    <span class="text-2xl font-bold text-green-600" id="completed-orders">0</span>
+                                </div>
+                                <div class="flex justify-between items-center pb-3 border-b">
+                                    <span class="text-gray-600">Pending Orders</span>
+                                    <span class="text-2xl font-bold text-yellow-600" id="pending-orders">0</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-gray-600">Average Order Value</span>
+                                    <span class="text-2xl font-bold text-blue-600" id="avg-order-value">R 0.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-lg shadow-md p-6">
+                            <h3 class="text-lg font-bold mb-4">Category Distribution</h3>
+                            <div id="category-distribution" class="space-y-3">
+                                <p class="text-gray-500">Loading...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-lg font-bold mb-4">Delivery Methods</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="p-4 bg-blue-50 rounded-lg text-center">
+                                <p class="text-gray-600 text-sm">Home Deliveries</p>
+                                <p class="text-3xl font-bold text-blue-600" id="home-deliveries">0</p>
+                            </div>
+                            <div class="p-4 bg-purple-50 rounded-lg text-center">
+                                <p class="text-gray-600 text-sm">Store Pickups</p>
+                                <p class="text-3xl font-bold text-purple-600" id="store-pickups">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Homepage Tab -->
+            <div id="homepage-tab" class="tab-content hidden">
+                <!-- Hero Section Management -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h3 class="text-xl font-bold mb-4"><i class="fa-solid fa-image mr-2 text-brand-gold"></i>Hero Section</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-bold mb-2">Hero Title</label>
+                            <input type="text" id="hero-title" placeholder="e.g., Vibrant Tradition, Modern Style." class="w-full border p-3 rounded" maxlength="100">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold mb-2">Hero Subtitle</label>
+                            <textarea id="hero-subtitle" placeholder="Hero subtitle text..." class="w-full border p-3 rounded" rows="3" maxlength="200"></textarea>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-bold mb-2">Hero Image</label>
+                        <div class="flex gap-2 mb-2">
+                            <input type="file" id="hero-image-upload" accept="image/*" class="flex-1 border p-2 rounded text-sm" onchange="handleHomepageImageUpload(event, 'hero-image')">
+                            <button type="button" onclick="document.getElementById('hero-image-upload').click()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Browse</button>
+                        </div>
+                        <p class="text-xs text-gray-500 mb-2">Or paste URL:</p>
+                        <input type="url" id="hero-image" placeholder="https://images.unsplash.com/..." class="w-full border p-3 rounded mb-2">
+                        <button type="button" onclick="previewImage('hero-image')" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Preview</button>
+                    </div>
+                    <div id="hero-preview" class="mt-4 rounded overflow-hidden max-h-48 border-2 border-dashed border-gray-300">
+                        <img id="hero-preview-img" src="" alt="Hero Preview" class="w-full h-full object-cover hidden">
+                    </div>
+                    <button type="button" onclick="saveHeroSection()" class="mt-4 w-full bg-brand-gold text-white py-3 rounded font-bold hover:bg-yellow-600">Save Hero Section</button>
+                </div>
+
+                <!-- Browse by Category Section -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h3 class="text-xl font-bold mb-4"><i class="fa-solid fa-folder mr-2 text-brand-gold"></i>Browse by Category</h3>
+                    <div id="category-items" class="space-y-4 mb-6"></div>
+                    <div class="flex gap-4">
+                        <button type="button" onclick="addCategoryItem()" class="flex-1 bg-green-500 text-white py-3 rounded font-bold hover:bg-green-600">+ Add Category</button>
+                        <button type="button" onclick="saveCategories()" class="flex-1 bg-brand-gold text-white py-3 rounded font-bold hover:bg-yellow-600"><i class="fa-solid fa-save mr-2"></i>Save Categories</button>
+                    </div>
+                </div>
+
+                <!-- Latest Arrivals Section -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h3 class="text-xl font-bold mb-4"><i class="fa-solid fa-sparkles mr-2 text-brand-gold"></i>Latest Arrivals Section</h3>
+                    <div class="mb-4 p-4 bg-gray-50 rounded">
+                        <label class="block text-sm font-bold mb-2">Section Title</label>
+                        <input type="text" id="latest-title" placeholder="e.g., Latest Arrivals" class="w-full border p-3 rounded" value="Latest Arrivals">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2">Select Products for Latest Arrivals (max 6)</label>
+                        <select id="latest-products" multiple class="w-full border p-3 rounded h-32">
+                            <option value="">Loading products...</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple products</p>
+                    </div>
+                    <button type="button" onclick="saveLatestArrivals()" class="w-full bg-brand-gold text-white py-3 rounded font-bold hover:bg-yellow-600">Save Latest Arrivals</button>
+                </div>
+
+                <!-- New Arrivals Section -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h3 class="text-xl font-bold mb-4"><i class="fa-solid fa-star mr-2 text-brand-gold"></i>New Arrivals Section</h3>
+                    <div class="mb-4 p-4 bg-gray-50 rounded">
+                        <label class="block text-sm font-bold mb-2">Section Title</label>
+                        <input type="text" id="new-title" placeholder="e.g., New Arrivals" class="w-full border p-3 rounded" value="New Arrivals">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2">Select Products for New Arrivals (max 8)</label>
+                        <select id="new-products" multiple class="w-full border p-3 rounded h-32">
+                            <option value="">Loading products...</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple products</p>
+                    </div>
+                    <button type="button" onclick="saveNewArrivals()" class="w-full bg-brand-gold text-white py-3 rounded font-bold hover:bg-yellow-600">Save New Arrivals</button>
+                </div>
+
+                <!-- Trending Section (Bonus) -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h3 class="text-xl font-bold mb-4"><i class="fa-solid fa-fire mr-2 text-brand-gold"></i>Trending Section</h3>
+                    <div class="mb-4 p-4 bg-gray-50 rounded">
+                        <label class="block text-sm font-bold mb-2">Section Title</label>
+                        <input type="text" id="trending-title" placeholder="e.g., What's Trending" class="w-full border p-3 rounded" value="What's Trending">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2">Trending Description</label>
+                        <textarea id="trending-description" placeholder="Describe what's trending in your store..." class="w-full border p-3 rounded" rows="3"></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-2">Select Products for Trending (max 4)</label>
+                        <select id="trending-products" multiple class="w-full border p-3 rounded h-24">
+                            <option value="">Loading products...</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple products</p>
+                    </div>
+                    <button type="button" onclick="saveTrending()" class="w-full bg-brand-gold text-white py-3 rounded font-bold hover:bg-yellow-600">Save Trending Section</button>
+                </div>
+
+                <!-- Preview Button -->
+                <div class="flex gap-4">
+                    <a href="index.html" target="_blank" class="flex-1 bg-blue-500 text-white py-3 rounded font-bold hover:bg-blue-600 flex items-center justify-center">
+                        <i class="fa-solid fa-eye mr-2"></i> Preview Homepage
+                    </a>
+                    <button type="button" onclick="resetHomepage()" class="flex-1 bg-red-500 text-white py-3 rounded font-bold hover:bg-red-600">Reset to Default</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Modal -->
+    <div id="product-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg max-w-2xl w-full p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold" id="modal-title">Add New Product</h3>
+                <button onclick="closeProductModal()" class="text-2xl text-gray-400 hover:text-gray-600">&times;</button>
+            </div>
+
+            <form id="product-form" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold mb-2">Product Name *</label>
+                        <input type="text" id="form-name" placeholder="e.g., African Wrap Dress" class="w-full border p-3 rounded" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-2">Category *</label>
+                        <select id="form-category" class="w-full border p-3 rounded" required>
+                            <option value="">Select Category</option>
+                            <option value="ladies-dresses">Ladies Dresses</option>
+                            <option value="ladies-pants">Ladies Pants</option>
+                            <option value="ladies-tops">Ladies Tops</option>
+                            <option value="men-shirts">Men's Shirts</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold mb-2">Price (R) *</label>
+                        <input type="number" id="form-price" placeholder="299.99" step="0.01" class="w-full border p-3 rounded" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-2">Product Image</label>
+                        <div class="flex gap-2">
+                            <input type="file" id="form-image-upload" accept="image/*" class="flex-1 border p-2 rounded text-sm" onchange="handleProductImageUpload(event)">
+                            <button type="button" onclick="document.getElementById('form-image-upload').click()" class="px-3 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">Browse</button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Or paste URL below:</p>
+                        <input type="url" id="form-image" placeholder="https://example.com/image.jpg" class="w-full border p-3 rounded mt-1">
+                    </div>
+                </div>
+
+                <div id="product-image-preview" class="rounded overflow-hidden border-2 border-dashed border-gray-300 p-2 bg-gray-50">
+                    <img id="product-image-preview-img" src="" alt="Product Preview" class="w-full h-auto hidden max-h-48 object-cover">
+                    <div id="product-image-placeholder" class="text-center py-8 text-gray-400">
+                        <i class="fa-solid fa-image text-4xl mb-2"></i>
+                        <p class="text-sm">Image preview will appear here</p>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold mb-2">Description</label>
+                    <textarea id="form-description" placeholder="Product description..." class="w-full border p-3 rounded" rows="3"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold mb-2">Available Colors (comma-separated) *</label>
+                    <input type="text" id="form-colors" placeholder="e.g., Red, Blue, Gold, Black" class="w-full border p-3 rounded" required>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold mb-2">Available Sizes (comma-separated) *</label>
+                    <input type="text" id="form-sizes" placeholder="e.g., XS, S, M, L, XL, XXL" class="w-full border p-3 rounded" required>
+                </div>
+
+                <div class="flex gap-3 pt-6 border-t">
+                    <button type="button" onclick="closeProductModal()" class="flex-1 bg-gray-300 text-gray-800 py-3 rounded font-bold hover:bg-gray-400">Cancel</button>
+                    <button type="submit" class="flex-1 bg-brand-gold text-white py-3 rounded font-bold hover:bg-yellow-600">Save Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let allProducts = [];
+        let allOrders = [];
+
+        // Initialize
+        function initAdmin() {
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('admin-panel').classList.add('hidden');
+        }
+
+        async function loginAdmin() {
+            const email = document.getElementById('admin-email').value;
+            const password = document.getElementById('admin-password').value;
+            const loginBtn = document.getElementById('login-btn');
+            const errorMsg = document.getElementById('login-error');
+
+            if (!email || !password) {
+                errorMsg.textContent = 'Please enter email and password';
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                loginBtn.disabled = true;
+                loginBtn.textContent = 'Authenticating...';
+                errorMsg.classList.add('hidden');
+
+                console.log('[Auth] Login attempt:', email);
+                console.log('[Auth] Firebase mode:', window.firebaseMode);
+                console.log('[Auth] Firebase ready:', window.firebaseReady);
+
+                let authenticated = false;
+
+                // Try Firebase first if available and ready
+                if (window.firebaseMode === 'firebase' && window.firebaseReady && window.auth) {
+                    try {
+                        console.log('[Auth] Attempting Firebase authentication');
+                        
+                        const userCredential = await window.auth.signInWithEmailAndPassword(email, password);
+                        const user = userCredential.user;
+                        console.log('[Auth] ✓ Firebase user authenticated:', user.uid);
+
+                        // Check admin status in Firestore if available
+                        if (window.db) {
+                            try {
+                                const userDoc = await window.db.collection('admins').doc(user.uid).get();
+                                if (!userDoc.exists) {
+                                    await window.auth.signOut();
+                                    throw new Error('You do not have admin access');
+                                }
+                                console.log('[Auth] ✓ Admin verified in Firestore');
+                            } catch (dbError) {
+                                console.warn('[Auth] Firestore check failed:', dbError.message);
+                                // Allow login anyway if we have Firebase user
+                            }
+                        }
+
+                        window.currentAdminUser = { uid: user.uid, email: user.email, mode: 'firebase' };
+                        authenticated = true;
+                        
+                    } catch (fbError) {
+                        console.warn('[Auth] Firebase authentication failed:', fbError.message);
+                        console.log('[Auth] Falling back to local authentication');
+                        // Fall through to local auth
+                    }
+                }
+
+                // Use local authentication if Firebase failed or unavailable
+                if (!authenticated) {
+                    console.log('[Auth] Using local authentication');
+                    
+                    if (!ADMIN_CREDENTIALS[email]) {
+                        throw new Error('Admin account not found. Please check your email.');
+                    }
+
+                    if (ADMIN_CREDENTIALS[email] !== password) {
+                        throw new Error('Incorrect password');
+                    }
+
+                    console.log('[Auth] ✓ Local credentials verified');
+                    window.currentAdminUser = { email: email, mode: 'local' };
+                    authenticated = true;
+                }
+
+                if (!authenticated) {
+                    throw new Error('Authentication failed');
+                }
+
+                // Login successful - show admin panel
+                console.log('[Auth] ✓ Login successful, user email:', email);
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('admin-panel').classList.remove('hidden');
+                document.getElementById('admin-email').value = '';
+                document.getElementById('admin-password').value = '';
+                
+                // Load data if available
+                if (typeof loadAllData === 'function') {
+                    loadAllData();
+                }
+                
+            } catch (error) {
+                console.error('[Auth] Login error:', error.message);
+                
+                let errorText = 'Login failed';
+                
+                if (error.code === 'auth/user-not-found') {
+                    errorText = 'Admin account not found';
+                } else if (error.code === 'auth/wrong-password') {
+                    errorText = 'Incorrect password';
+                } else if (error.code === 'auth/invalid-email') {
+                    errorText = 'Invalid email address';
+                } else if (error.code === 'auth/too-many-requests') {
+                    errorText = 'Too many login attempts. Please try again later.';
+                } else if (error.message) {
+                    errorText = error.message;
+                }
+                
+                errorMsg.textContent = errorText;
+                errorMsg.classList.remove('hidden');
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
+            }
+        }
+
+        async function logoutAdmin() {
+            if (confirm('Are you sure you want to logout?')) {
+                try {
+                    if (window.firebaseMode === 'firebase' && window.auth) {
+                        await window.auth.signOut();
+                    }
+                    window.currentAdminUser = null;
+                    document.getElementById('admin-panel').classList.add('hidden');
+                    document.getElementById('login-screen').classList.remove('hidden');
+                    document.getElementById('admin-email').value = '';
+                    document.getElementById('admin-password').value = '';
+                    allProducts = [];
+                    allOrders = [];
+                    console.log('[Auth] ✓ Logged out');
+                } catch (error) {
+                    console.error('[Auth] Logout error:', error);
+                }
+            }
+        }
+
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+            
+            // Show selected tab
+            const tab = document.getElementById(tabName + '-tab');
+            if (tab) tab.classList.remove('hidden');
+
+            // Update nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('bg-zinc-800'));
+            
+            // Find and highlight the clicked button
+            const buttons = document.querySelectorAll('.nav-btn');
+            for (let btn of buttons) {
+                if (btn.textContent.toLowerCase().includes(tabName.toLowerCase())) {
+                    btn.classList.add('bg-zinc-800');
+                    break;
+                }
+            }
+
+            // Update page title
+            const titles = {
+                dashboard: 'Dashboard',
+                inventory: 'Inventory Management',
+                products: 'Product Management',
+                orders: 'Order Management',
+                analytics: 'Sales Analytics',
+                homepage: 'Homepage Management'
+            };
+            
+            document.getElementById('page-title').textContent = titles[tabName] || 'Dashboard';
+            document.getElementById('page-subtitle').textContent = 'Manage your ' + (titles[tabName] || 'Dashboard').toLowerCase();
+            
+            // Show/hide add product button
+            document.getElementById('add-product-btn').classList.toggle('hidden', tabName !== 'products');
+
+            // Load data for specific tabs
+            if (tabName === 'dashboard') loadDashboard();
+            else if (tabName === 'inventory') loadInventory();
+            else if (tabName === 'products') loadProductsTab();
+            else if (tabName === 'orders') loadOrdersTab();
+            else if (tabName === 'analytics') loadAnalytics();
+            else if (tabName === 'homepage') loadHomepageConfig();
+        }
+
+        async function loadAllData() {
+            console.log('[Data] Starting loadAllData...');
+            
+            try {
+                // Try loading from cloud first if synced
+                if (window.syncEnabled && window.currentAdminUser) {
+                    console.log('[CloudSync] Attempting to load data from cloud...');
+                    const cloudProductsLoaded = await loadProductsFromCloud();
+                    const cloudOrdersLoaded = await loadOrdersFromCloud();
+                    
+                    if (cloudProductsLoaded || cloudOrdersLoaded) {
+                        console.log('[CloudSync] ✓ Data loaded from cloud');
+                        // Setup real-time listeners
+                        setupProductsListener();
+                        setupOrdersListener();
+                        loadDashboard();
+                        return;
+                    }
+                }
+
+                // Fallback to localStorage
+                console.log('[Data] Loading from local storage');
+                allProducts = JSON.parse(localStorage.getItem('africhic-products')) || [];
+                console.log('[Data] Loaded', allProducts.length, 'products from localStorage');
+                
+                // Load orders using OrderManager
+                console.log('[Data] Loading orders from OrderManager...');
+                try {
+                    if (typeof orderManager !== 'undefined' && orderManager && typeof orderManager.getAllOrders === 'function') {
+                        allOrders = await orderManager.getAllOrders();
+                        console.log('[Data] ✓ Loaded', allOrders.length, 'orders from OrderManager');
+                    } else {
+                        console.warn('[Data] OrderManager not available, falling back to localStorage');
+                        allOrders = JSON.parse(localStorage.getItem('africhic-orders')) || [];
+                    }
+                } catch (err) {
+                    console.error('[Data] Error loading orders from OrderManager:', err);
+                    allOrders = JSON.parse(localStorage.getItem('africhic-orders')) || [];
+                    console.log('[Data] Loaded', allOrders.length, 'orders from localStorage fallback');
+                }
+                
+                localStorage.setItem('africhic-orders', JSON.stringify(allOrders));
+                console.log('[Data] ✓ All data loaded successfully');
+                loadDashboard();
+            } catch (error) {
+                console.error('[Data] Error in loadAllData:', error);
+                // Ensure at least localStorage data is loaded
+                allProducts = JSON.parse(localStorage.getItem('africhic-products')) || [];
+                allOrders = JSON.parse(localStorage.getItem('africhic-orders')) || [];
+                loadDashboard();
+            }
+        }
+
+        function loadDashboard() {
+            console.log('[Dashboard] Loading dashboard with', allOrders.length, 'orders and', allProducts.length, 'products');
+            
+            // Update stats
+            const categories = new Set(allProducts.map(p => p.category));
+            
+            document.getElementById('stat-products').textContent = allProducts.length;
+            document.getElementById('stat-orders').textContent = allOrders.length;
+            document.getElementById('stat-categories').textContent = categories.size;
+            document.getElementById('stat-low-stock').textContent = '0';
+
+            // Recent orders
+            const recentOrders = allOrders.slice(-5).reverse();
+            console.log('[Dashboard] Displaying', recentOrders.length, 'recent orders');
+            
+            const ordersHtml = recentOrders.length > 0 
+                ? recentOrders.map(order => `
+                    <div class="flex justify-between items-start pb-3 border-b">
+                        <div>
+                            <p class="font-bold text-sm">${order.id}</p>
+                            <p class="text-gray-600 text-xs">${order.customer_name || 'Unknown'}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-bold">R ${(order.total || 0).toFixed(2)}</p>
+                            <span class="badge badge-${order.status === 'completed' ? 'success' : order.status === 'pending' ? 'warning' : 'danger'}">${order.status || 'pending'}</span>
+                        </div>
+                    </div>
+                `).join('')
+                : '<p class="text-gray-500">No orders yet</p>';
+            
+            const recentOrdersList = document.getElementById('recent-orders-list');
+            if (recentOrdersList) {
+                recentOrdersList.innerHTML = ordersHtml;
+            } else {
+                console.warn('[Dashboard] Element recent-orders-list not found');
+            }
+
+            // Top products
+            const topProducts = allProducts.slice(0, 5);
+            const productsHtml = topProducts.length > 0
+                ? topProducts.map(product => `
+                    <div class="flex justify-between items-center pb-3 border-b">
+                        <div>
+                            <p class="font-bold text-sm">${product.name}</p>
+                            <p class="text-gray-600 text-xs">${product.category}</p>
+                        </div>
+                        <p class="font-bold">R ${product.price.toFixed(2)}</p>
+                    </div>
+                `).join('')
+                : '<p class="text-gray-500">No products yet</p>';
+            
+            const topProductsList = document.getElementById('top-products-list');
+            if (topProductsList) {
+                topProductsList.innerHTML = productsHtml;
+            } else {
+                console.warn('[Dashboard] Element top-products-list not found');
+            }
+        }
+
+        function loadInventory() {
+            const searchTerm = document.getElementById('inventory-search')?.value?.toLowerCase() || '';
+            const filtered = allProducts.filter(p => p.name.toLowerCase().includes(searchTerm));
+            
+            const inventoryHtml = filtered.length > 0
+                ? filtered.map(product => `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="px-4 py-3"><strong>${product.name}</strong></td>
+                        <td class="px-4 py-3 text-sm text-gray-600">${product.category}</td>
+                        <td class="px-4 py-3 text-center font-bold">R ${product.price.toFixed(2)}</td>
+                        <td class="px-4 py-3 text-center text-sm">${product.colours?.length || 0}</td>
+                        <td class="px-4 py-3 text-center text-sm">${product.sizes?.length || 0}</td>
+                        <td class="px-4 py-3 text-center"><span class="badge badge-success">Active</span></td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="editProduct('${product.id}')" class="text-brand-gold hover:underline text-sm mr-2">Edit</button>
+                            <button onclick="deleteProduct('${product.id}')" class="text-red-600 hover:underline text-sm">Delete</button>
+                        </td>
+                    </tr>
+                `).join('')
+                : '<tr><td colspan="7" class="text-center py-4 text-gray-500">No products found</td></tr>';
+            
+            document.getElementById('inventory-list').innerHTML = inventoryHtml;
+        }
+
+        function loadProductsTab() {
+            const searchTerm = document.getElementById('product-search')?.value?.toLowerCase() || '';
+            const categoryFilter = document.getElementById('category-filter')?.value || '';
+            
+            let filtered = allProducts;
+            if (searchTerm) filtered = filtered.filter(p => p.name.toLowerCase().includes(searchTerm));
+            if (categoryFilter) filtered = filtered.filter(p => p.category === categoryFilter);
+
+            const gridHtml = filtered.length > 0
+                ? filtered.map(product => `
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition">
+                        <div class="bg-gradient-to-r from-brand-gold to-yellow-500 h-32 flex items-center justify-center overflow-hidden">
+                            ${product.image ? 
+                                `<img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover">` :
+                                `<i class="fa-solid fa-image text-4xl text-white opacity-50"></i>`
+                            }
+                        </div>
+                        <div class="p-4">
+                            <h4 class="font-bold text-lg mb-2">${product.name}</h4>
+                            <p class="text-sm text-gray-600 mb-3">${product.category.replace('-', ' ').toUpperCase()}</p>
+                            <p class="text-2xl font-bold text-brand-gold mb-4">R ${product.price.toFixed(2)}</p>
+                            <div class="flex gap-2 flex-wrap mb-4">
+                                <span class="badge badge-success">${product.sizes?.length || 0} Sizes</span>
+                                <span class="badge badge-warning">${product.colours?.length || 0} Colors</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="editProduct('${product.id}')" class="flex-1 bg-brand-gold text-white py-2 rounded text-sm hover:bg-yellow-600 transition">Edit</button>
+                                <button onclick="deleteProduct('${product.id}')" class="flex-1 bg-red-100 text-red-600 py-2 rounded text-sm hover:bg-red-200 transition">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')
+                : '<div class="col-span-full text-center py-8 text-gray-500">No products found</div>';
+            
+            document.getElementById('products-grid').innerHTML = gridHtml;
+        }
+
+        function loadOrdersTab() {
+            const searchTerm = document.getElementById('order-search')?.value?.toLowerCase() || '';
+            const statusFilter = document.getElementById('order-status-filter')?.value || '';
+            
+            let filtered = allOrders;
+            if (searchTerm) filtered = filtered.filter(o => 
+                (o.id || '').toLowerCase().includes(searchTerm) || 
+                (o.customer_name || '').toLowerCase().includes(searchTerm)
+            );
+            if (statusFilter) filtered = filtered.filter(o => o.status === statusFilter);
+
+            console.log('[OrdersTab] Displaying', filtered.length, 'orders');
+
+            const ordersHtml = filtered.length > 0
+                ? filtered.map(order => `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="px-4 py-3 text-sm font-mono">${order.id || 'N/A'}</td>
+                        <td class="px-4 py-3"><strong>${order.customer_name || 'Unknown'}</strong><br><span class="text-xs text-gray-600">${order.customer_email || 'N/A'}</span></td>
+                        <td class="px-4 py-3 text-sm">${order.date || order.createdAt || 'N/A'}</td>
+                        <td class="px-4 py-3 text-center font-bold">R ${(order.total || 0).toFixed(2)}</td>
+                        <td class="px-4 py-3 text-center"><span class="badge badge-${order.status === 'completed' ? 'success' : order.status === 'pending' ? 'warning' : 'danger'}">${(order.status || 'pending').toUpperCase()}</span></td>
+                        <td class="px-4 py-3 text-center text-sm">${order.delivery_method === 'home_delivery' ? 'Home' : order.delivery_method === 'store_pickup' ? 'Pickup' : 'N/A'}</td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="updateOrderStatus('${order.id}')" class="text-brand-gold hover:underline text-sm">Update</button>
+                        </td>
+                    </tr>
+                `).join('')
+                : '<tr><td colspan="7" class="text-center py-4 text-gray-500">No orders found</td></tr>';
+            
+            const ordersList = document.getElementById('orders-list');
+            if (ordersList) {
+                ordersList.innerHTML = ordersHtml;
+            } else {
+                console.warn('[OrdersTab] Element orders-list not found');
+            }
+        }
+
+        function loadAnalytics() {
+            console.log('[Analytics] Loading analytics with', allOrders.length, 'orders');
+            
+            const completedOrders = allOrders.filter(o => o.status === 'completed');
+            const pendingOrders = allOrders.filter(o => o.status === 'pending');
+            const totalRevenue = completedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+            const avgOrderValue = completedOrders.length > 0 ? totalRevenue / completedOrders.length : 0;
+
+            const totalRevenueEl = document.getElementById('total-revenue');
+            const completedOrdersEl = document.getElementById('completed-orders');
+            const pendingOrdersEl = document.getElementById('pending-orders');
+            const avgOrderValueEl = document.getElementById('avg-order-value');
+
+            if (totalRevenueEl) totalRevenueEl.textContent = 'R ' + totalRevenue.toFixed(2);
+            if (completedOrdersEl) completedOrdersEl.textContent = completedOrders.length;
+            if (pendingOrdersEl) pendingOrdersEl.textContent = pendingOrders.length;
+            if (avgOrderValueEl) avgOrderValueEl.textContent = 'R ' + avgOrderValue.toFixed(2);
+
+            // Category distribution
+            const categoryCount = {};
+            allProducts.forEach(p => {
+                categoryCount[p.category] = (categoryCount[p.category] || 0) + 1;
+            });
+
+            const categoryHtml = Object.entries(categoryCount).length > 0
+                ? Object.entries(categoryCount).map(([cat, count]) => `
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">${(cat || 'Unknown').replace('-', ' ').toUpperCase()}</span>
+                        <span class="font-bold">${count} products</span>
+                    </div>
+                `).join('')
+                : '<p class="text-gray-500">No data</p>';
+
+            const categoryDistEl = document.getElementById('category-distribution');
+            if (categoryDistEl) categoryDistEl.innerHTML = categoryHtml;
+
+            // Delivery methods
+            const homeDeliveries = allOrders.filter(o => o.delivery_method === 'home_delivery').length;
+            const storePickups = allOrders.filter(o => o.delivery_method === 'store_pickup').length;
+
+            const homeDeliveriesEl = document.getElementById('home-deliveries');
+            const storePickupsEl = document.getElementById('store-pickups');
+            
+            if (homeDeliveriesEl) homeDeliveriesEl.textContent = homeDeliveries;
+            if (storePickupsEl) storePickupsEl.textContent = storePickups;
+        }
+
+        // Image upload handler for products
+        function handleProductImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Check file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Image size must be less than 5MB');
+                return;
+            }
+
+            // Check file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select a valid image file');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Image = e.target.result;
+                document.getElementById('form-image').value = base64Image;
+                
+                // Show preview
+                const previewImg = document.getElementById('product-image-preview-img');
+                const placeholder = document.getElementById('product-image-placeholder');
+                previewImg.src = base64Image;
+                previewImg.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Image upload handler for homepage sections
+        function handleHomepageImageUpload(event, fieldId) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Image size must be less than 5MB');
+                return;
+            }
+
+            if (!file.type.startsWith('image/')) {
+                alert('Please select a valid image file');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Image = e.target.result;
+                document.getElementById(fieldId).value = base64Image;
+                
+                // Show preview
+                const previewId = fieldId + '-preview-img';
+                const previewImg = document.getElementById(previewId);
+                if (previewImg) {
+                    previewImg.src = base64Image;
+                    previewImg.classList.remove('hidden');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ========================================
+        // CLOUD SYNC FUNCTIONS
+        // ========================================
+
+        // Upload image to Firebase Storage
+        async function uploadImageToCloud(base64Image, imagePath) {
+            if (!window.syncEnabled || !window.storage) return base64Image;
+
+            try {
+                console.log('[CloudSync] Uploading image to Firebase Storage...');
+                
+                // Convert Base64 to Blob
+                const byteCharacters = atob(base64Image.split(',')[1]);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'image/jpeg' });
+
+                // Upload to Firebase Storage
+                const storageRef = window.storage.ref();
+                const fileRef = storageRef.child(imagePath);
+                await fileRef.put(blob);
+
+                // Get download URL
+                const downloadUrl = await fileRef.getDownloadURL();
+                console.log('[CloudSync] ✓ Image uploaded, URL:', downloadUrl);
+                return downloadUrl;
+            } catch (error) {
+                console.warn('[CloudSync] Image upload failed:', error.message);
+                return base64Image; // Return Base64 as fallback
+            }
+        }
+
+        // Sync products to Firestore
+        async function syncProductsToCloud() {
+            if (!window.syncEnabled || !window.db || !window.currentAdminUser) {
+                console.log('[CloudSync] Sync disabled or not authenticated');
+                return false;
+            }
+
+            try {
+                console.log('[CloudSync] Syncing products to Firestore...');
+                const productsRef = window.db.collection('stores').doc(window.currentAdminUser.email)
+                    .collection('products');
+
+                // Batch write for efficiency
+                const batch = window.db.batch();
+                
+                for (const product of allProducts) {
+                    const docRef = productsRef.doc(product.id);
+                    batch.set(docRef, {
+                        ...product,
+                        updatedAt: new Date().toISOString(),
+                        updatedBy: window.currentAdminUser.email
+                    });
+                }
+
+                await batch.commit();
+                console.log('[CloudSync] ✓ Products synced to Firestore');
+                return true;
+            } catch (error) {
+                console.error('[CloudSync] Product sync failed:', error.message);
+                return false;
+            }
+        }
+
+        // Sync orders to Firestore
+        async function syncOrdersToCloud() {
+            if (!window.syncEnabled || !window.db || !window.currentAdminUser) return false;
+
+            try {
+                console.log('[CloudSync] Syncing orders to Firestore...');
+                const ordersRef = window.db.collection('stores').doc(window.currentAdminUser.email)
+                    .collection('orders');
+
+                const batch = window.db.batch();
+                
+                for (const order of allOrders) {
+                    const docRef = ordersRef.doc(order.id);
+                    batch.set(docRef, {
+                        ...order,
+                        updatedAt: new Date().toISOString(),
+                        updatedBy: window.currentAdminUser.email
+                    });
+                }
+
+                await batch.commit();
+                console.log('[CloudSync] ✓ Orders synced to Firestore');
+                return true;
+            } catch (error) {
+                console.error('[CloudSync] Order sync failed:', error.message);
+                return false;
+            }
+        }
+
+        // Load products from Cloud
+        async function loadProductsFromCloud() {
+            if (!window.syncEnabled || !window.db || !window.currentAdminUser) {
+                console.log('[CloudSync] Cannot load from cloud - sync disabled');
+                return false;
+            }
+
+            try {
+                console.log('[CloudSync] Loading products from Firestore...');
+                const productsRef = window.db.collection('stores').doc(window.currentAdminUser.email)
+                    .collection('products');
+
+                const snapshot = await productsRef.get();
+                const cloudProducts = [];
+
+                snapshot.forEach(doc => {
+                    cloudProducts.push(doc.data());
+                });
+
+                if (cloudProducts.length > 0) {
+                    allProducts = cloudProducts;
+                    localStorage.setItem('africhic-products', JSON.stringify(allProducts));
+                    console.log('[CloudSync] ✓ Loaded', cloudProducts.length, 'products from cloud');
+                    return true;
+                } else {
+                    console.log('[CloudSync] No products in cloud');
+                    return false;
+                }
+            } catch (error) {
+                console.error('[CloudSync] Load products failed:', error.message);
+                return false;
+            }
+        }
+
+        // Load orders from Cloud
+        async function loadOrdersFromCloud() {
+            if (!window.syncEnabled || !window.db || !window.currentAdminUser) return false;
+
+            try {
+                console.log('[CloudSync] Loading orders from Firestore...');
+                const ordersRef = window.db.collection('stores').doc(window.currentAdminUser.email)
+                    .collection('orders');
+
+                const snapshot = await ordersRef.get();
+                const cloudOrders = [];
+
+                snapshot.forEach(doc => {
+                    cloudOrders.push(doc.data());
+                });
+
+                if (cloudOrders.length > 0) {
+                    allOrders = cloudOrders;
+                    localStorage.setItem('africhic-orders', JSON.stringify(allOrders));
+                    console.log('[CloudSync] ✓ Loaded', cloudOrders.length, 'orders from cloud');
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('[CloudSync] Load orders failed:', error.message);
+                return false;
+            }
+        }
+
+        // Setup real-time listeners for products
+        function setupProductsListener() {
+            if (!window.syncEnabled || !window.db || !window.currentAdminUser) return;
+
+            try {
+                console.log('[CloudSync] Setting up real-time products listener...');
+                const productsRef = window.db.collection('stores').doc(window.currentAdminUser.email)
+                    .collection('products');
+
+                productsRef.onSnapshot((snapshot) => {
+                    const cloudProducts = [];
+                    snapshot.forEach(doc => {
+                        cloudProducts.push(doc.data());
+                    });
+
+                    // Check if data changed
+                    if (JSON.stringify(cloudProducts) !== JSON.stringify(allProducts)) {
+                        console.log('[CloudSync] Products updated from cloud');
+                        allProducts = cloudProducts;
+                        localStorage.setItem('africhic-products', JSON.stringify(allProducts));
+                        
+                        // Refresh UI if products tab is active
+                        const activeTab = document.querySelector('.tab-content:not(.hidden)');
+                        if (activeTab && activeTab.id === 'products-tab') {
+                            loadProductsTab();
+                        }
+                        loadDashboard();
+                    }
+                });
+            } catch (error) {
+                console.error('[CloudSync] Products listener setup failed:', error.message);
+            }
+        }
+
+        // Setup real-time listeners for orders
+        function setupOrdersListener() {
+            // Use OrderManager's real-time listener
+            window.addEventListener('ordersUpdated', function(event) {
+                const cloudOrders = event.detail.orders;
+                
+                if (JSON.stringify(cloudOrders) !== JSON.stringify(allOrders)) {
+                    console.log('[OrderManager] Orders updated in real-time');
+                    allOrders = cloudOrders;
+                    localStorage.setItem('africhic-orders', JSON.stringify(allOrders));
+                    
+                    const activeTab = document.querySelector('.tab-content:not(.hidden)');
+                    if (activeTab && activeTab.id === 'orders-tab') {
+                        loadOrdersTab();
+                    }
+                    loadDashboard();
+                }
+            });
+        }
+
+        // Complete cloud sync on save
+        async function performCloudSync() {
+            if (!window.syncEnabled) {
+                console.log('[CloudSync] Cloud sync disabled, using local storage only');
+                return true;
+            }
+
+            console.log('[CloudSync] Starting complete sync...');
+            const productSync = await syncProductsToCloud();
+            const orderSync = await syncOrdersToCloud();
+
+            if (productSync && orderSync) {
+                console.log('[CloudSync] ✓ Complete sync successful');
+                return true;
+            } else {
+                console.log('[CloudSync] ⚠ Partial sync completed');
+                return false;
+            }
+        }
+
+        function openProductModal() {
+            document.getElementById('product-modal').classList.remove('hidden');
+            document.getElementById('modal-title').textContent = 'Add New Product';
+            document.getElementById('product-form').reset();
+            document.getElementById('form-image-upload').value = '';
+            
+            // Reset image preview
+            const previewImg = document.getElementById('product-image-preview-img');
+            const placeholder = document.getElementById('product-image-placeholder');
+            previewImg.classList.add('hidden');
+            placeholder.classList.remove('hidden');
+        }
+
+        function closeProductModal() {
+            document.getElementById('product-modal').classList.add('hidden');
+            document.getElementById('product-form').reset();
+            document.getElementById('form-image-upload').value = '';
+            
+            // Reset image preview
+            const previewImg = document.getElementById('product-image-preview-img');
+            const placeholder = document.getElementById('product-image-placeholder');
+            previewImg.classList.add('hidden');
+            placeholder.classList.remove('hidden');
+        }
+
+        function editProduct(productId) {
+            const product = allProducts.find(p => p.id === productId);
+            if (!product) return;
+
+            document.getElementById('form-name').value = product.name;
+            document.getElementById('form-category').value = product.category;
+            document.getElementById('form-price').value = product.price;
+            document.getElementById('form-image').value = product.image || '';
+            document.getElementById('form-description').value = product.description || '';
+            document.getElementById('form-colors').value = (product.colours || []).join(', ');
+            document.getElementById('form-sizes').value = (product.sizes || []).join(', ');
+            document.getElementById('modal-title').textContent = 'Edit Product';
+
+            // Show image preview if exists
+            const previewImg = document.getElementById('product-image-preview-img');
+            const placeholder = document.getElementById('product-image-placeholder');
+            if (product.image) {
+                previewImg.src = product.image;
+                previewImg.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                previewImg.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+            }
+
+            document.getElementById('product-modal').classList.remove('hidden');
+        }
+
+        async function deleteProduct(productId) {
+            if (!confirm('Are you sure you want to delete this product?')) return;
+            
+            allProducts = allProducts.filter(p => p.id !== productId);
+            localStorage.setItem('africhic-products', JSON.stringify(allProducts));
+            
+            // Sync deletion to cloud
+            if (window.syncEnabled && window.db && window.currentAdminUser) {
+                try {
+                    await window.db.collection('stores').doc(window.currentAdminUser.email)
+                        .collection('products').doc(productId).delete();
+                    console.log('[CloudSync] ✓ Product deleted from cloud');
+                } catch (error) {
+                    console.error('[CloudSync] Delete sync failed:', error.message);
+                }
+            }
+            
+            alert('Product deleted successfully!');
+            loadProductsTab();
+            loadInventory();
+            loadDashboard();
+        }
+
+        function updateOrderStatus(orderId) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order) return;
+
+            const newStatus = prompt('Enter new status (completed/pending/failed):', order.status);
+            if (newStatus && ['completed', 'pending', 'failed'].includes(newStatus)) {
+                order.status = newStatus;
+                localStorage.setItem('africhic-orders', JSON.stringify(allOrders));
+                loadOrdersTab();
+                loadAnalytics();
+                alert('Order status updated!');
+            }
+        }
+
+        document.getElementById('product-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const product = {
+                id: 'PROD-' + Date.now(),
+                name: document.getElementById('form-name').value,
+                category: document.getElementById('form-category').value,
+                price: parseFloat(document.getElementById('form-price').value),
+                image: document.getElementById('form-image').value || 'https://via.placeholder.com/300',
+                description: document.getElementById('form-description').value,
+                colours: document.getElementById('form-colors').value.split(',').map(c => c.trim()),
+                sizes: document.getElementById('form-sizes').value.split(',').map(s => s.trim()),
+                createdAt: new Date().toLocaleString()
+            };
+
+            // If image is Base64 and cloud sync enabled, upload to Firebase
+            if (product.image.startsWith('data:') && window.syncEnabled) {
+                const imagePath = `products/${product.id}/main.jpg`;
+                product.image = await uploadImageToCloud(product.image, imagePath);
+            }
+
+            allProducts.push(product);
+            localStorage.setItem('africhic-products', JSON.stringify(allProducts));
+            
+            // Sync to cloud
+            if (window.syncEnabled) {
+                await performCloudSync();
+            }
+            
+            alert('Product added successfully!');
+            closeProductModal();
+            loadAllData();
+            switchTab('dashboard');
+        });
+
+        // Search functionality
+        document.addEventListener('keyup', function(e) {
+            if (e.target.id === 'product-search' || e.target.id === 'inventory-search' || 
+                e.target.id === 'order-search') {
+                const activeTab = document.querySelector('.tab-content:not(.hidden)').id.replace('-tab', '');
+                if (activeTab === 'inventory') loadInventory();
+                else if (activeTab === 'products') loadProductsTab();
+                else if (activeTab === 'orders') loadOrdersTab();
+            }
+        });
+
+        document.addEventListener('change', function(e) {
+            if (e.target.id === 'category-filter' || e.target.id === 'order-status-filter') {
+                const activeTab = document.querySelector('.tab-content:not(.hidden)').id.replace('-tab', '');
+                if (activeTab === 'products') loadProductsTab();
+                else if (activeTab === 'orders') loadOrdersTab();
+            }
+        });
+
+        // Initialize on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initAdmin);
+        } else {
+            initAdmin();
+        }
+
+        // Homepage Management Functions
+        function loadHomepageConfig() {
+            const config = JSON.parse(localStorage.getItem('africhic-homepage-config')) || getDefaultHomepageConfig();
+            
+            // Load hero section
+            document.getElementById('hero-title').value = config.hero.title;
+            document.getElementById('hero-subtitle').value = config.hero.subtitle;
+            document.getElementById('hero-image').value = config.hero.image;
+            
+            // Load categories
+            renderCategoryItems(config.categories);
+            
+            // Load latest arrivals
+            document.getElementById('latest-title').value = config.latestArrivals.title;
+            populateProductSelects();
+            setSelectedProducts('latest-products', config.latestArrivals.productIds);
+            
+            // Load new arrivals
+            document.getElementById('new-title').value = config.newArrivals.title;
+            setSelectedProducts('new-products', config.newArrivals.productIds);
+            
+            // Load trending
+            document.getElementById('trending-title').value = config.trending.title;
+            document.getElementById('trending-description').value = config.trending.description;
+            setSelectedProducts('trending-products', config.trending.productIds);
+        }
+
+        function getDefaultHomepageConfig() {
+            return {
+                hero: {
+                    title: "Vibrant Tradition, Modern Style.",
+                    subtitle: "Limited edition African print dresses, shirts, and sets tailored for the modern individual.",
+                    image: "https://images.unsplash.com/photo-1572804013427-4d7ca7268217?auto=format&fit=crop&q=80"
+                },
+                categories: [
+                    {
+                        id: 1,
+                        name: "Ladies Wear",
+                        image: "https://images.unsplash.com/photo-1589156229687-496a31ad1d1f?auto=format&fit=crop&q=80",
+                        link: "shop.html?cat=ladies"
+                    },
+                    {
+                        id: 2,
+                        name: "Men's Shirts",
+                        image: "https://images.unsplash.com/photo-1530008051860-ca82035a1609?auto=format&fit=crop&q=80",
+                        link: "shop.html?cat=men"
+                    },
+                    {
+                        id: 3,
+                        name: "New Arrivals",
+                        image: "https://images.unsplash.com/photo-1523381235312-3a1647fa9921?auto=format&fit=crop&q=80",
+                        link: "shop.html?cat=new"
+                    }
+                ],
+                latestArrivals: {
+                    title: "Latest Arrivals",
+                    productIds: []
+                },
+                newArrivals: {
+                    title: "New Arrivals",
+                    productIds: []
+                },
+                trending: {
+                    title: "What's Trending",
+                    description: "Check out our most popular items this season!",
+                    productIds: []
+                }
+            };
+        }
+
+        function renderCategoryItems(categories) {
+            const container = document.getElementById('category-items');
+            container.innerHTML = categories.map((cat, idx) => `
+                <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Category Name</label>
+                            <input type="text" value="${cat.name}" class="w-full border p-2 text-sm rounded" onchange="updateCategory(${idx}, 'name', this.value)">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Category Link</label>
+                            <input type="text" value="${cat.link}" class="w-full border p-2 text-sm rounded" onchange="updateCategory(${idx}, 'link', this.value)">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <label class="block text-xs font-bold text-gray-600 mb-1">Category Image</label>
+                        <div class="flex gap-2 items-start">
+                            <div class="flex-1">
+                                <div class="border-2 border-dashed border-gray-300 rounded-lg p-3 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition" onclick="document.getElementById('cat-file-${idx}').click()">
+                                    <input type="file" id="cat-file-${idx}" class="hidden" accept="image/*" onchange="handleCategoryImageUpload(${idx}, event)">
+                                    <div>
+                                        <i class="fa-solid fa-cloud-arrow-up text-lg text-blue-500 mb-1"></i>
+                                        <p class="text-xs font-medium text-gray-700">Click to upload</p>
+                                    </div>
+                                </div>
+                                <input type="url" value="${cat.image}" class="w-full border p-2 text-sm rounded mt-2" onchange="updateCategory(${idx}, 'image', this.value)" placeholder="Or paste image URL">
+                            </div>
+                            <div>
+                                <div id="category-preview-${idx}" class="rounded overflow-hidden border border-gray-300" style="width: 80px; height: 80px;">
+                                    <img id="category-preview-img-${idx}" src="${cat.image}" alt="Category" class="w-full h-full object-cover">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="removeCategory(${idx})" class="mt-2 bg-red-500 text-white px-3 py-2 text-xs rounded hover:bg-red-600 w-full">Remove</button>
+                </div>
+            `).join('');
+        }
+
+        function addCategoryItem() {
+            const config = JSON.parse(localStorage.getItem('africhic-homepage-config')) || getDefaultHomepageConfig();
+            config.categories.push({
+                id: Date.now(),
+                name: "New Category",
+                image: "https://images.unsplash.com/photo-1589156229687-496a31ad1d1f?auto=format&fit=crop&q=80",
+                link: "shop.html"
+            });
+            localStorage.setItem('africhic-homepage-config', JSON.stringify(config));
+            renderCategoryItems(config.categories);
+            alert('Category added! Update the details and save.');
+        }
+
+        function updateCategory(idx, field, value) {
+            const config = JSON.parse(localStorage.getItem('africhic-homepage-config')) || getDefaultHomepageConfig();
+            config.categories[idx][field] = value;
+            localStorage.setItem('africhic-homepage-config', JSON.stringify(config));
+        }
+
+        function removeCategory(idx) {
+            if (confirm('Remove this category?')) {
+                const config = JSON.parse(localStorage.getItem('africhic-homepage-config')) || getDefaultHomepageConfig();
+                config.categories.splice(idx, 1);
+                localStorage.setItem('africhic-homepage-config', JSON.stringify(config));
+                renderCategoryItems(config.categories);
+            }
+        }
+
+        function handleCategoryImageUpload(idx, event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Validate file size (5MB max)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File is too large. Maximum size is 5MB.');
+                return;
+            }
+
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select a valid image file.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Image = e.target.result;
+                // Update the image preview
+                document.getElementById(`category-preview-img-${idx}`).src = base64Image;
+                // Update the form value
+                updateCategory(idx, 'image', base64Image);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveCategories() {
+            const config = JSON.parse(localStorage.getItem('africhic-homepage-config')) || getDefaultHomepageConfig();
+            localStorage.setItem('africhic-homepage-config', JSON.stringify(config));
+            
+            // Sync to cloud
+            if (window.syncEnabled && window.db && window.currentAdminUser) {
+                try {
+                    window.db.collection('stores').doc(window.currentAdminUser.email)
+                        .collection('config').doc('homepage').set(config);
+                    console.log('[CloudSync] ✓ Categories synced');
+                } catch (error) {
+                    console.error('[CloudSync] Category sync failed:', error.message);
+                }
+            }
+            
+            alert('✅ Categories saved successfully!');
+        }
+
+        function previewCategoryImage(idx) {
+            // Updated for new image handling
+            const imgElement = document.getElementById(`category-preview-img-${idx}`);
+            if (imgElement && imgElement.src) {
+                // Image preview is already displayed
+                return true;
+            }
+        }
+
+        function populateProductSelects() {
+            const products = JSON.parse(localStorage.getItem('africhic-products')) || [];
+            const productOptions = products.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            
+            document.getElementById('latest-products').innerHTML = '<option value="">Select products...</option>' + productOptions;
+            document.getElementById('new-products').innerHTML = '<option value="">Select products...</option>' + productOptions;
+            document.getElementById('trending-products').innerHTML = '<option value="">Select products...</option>' + productOptions;
+        }
+
+        function setSelectedProducts(selectId, productIds) {
+            const select = document.getElementById(selectId);
+            Array.from(select.options).forEach(option => {
+                option.selected = productIds.includes(option.value);
+            });
+        }
+
+        function getSelectedProducts(selectId) {
+            const select = document.getElementById(selectId);
+            return Array.from(select.selectedOptions).map(opt => opt.value);
+        }
+
+        function previewImage(inputId) {
+            const url = document.getElementById(inputId).value;
+            if (url) {
+                const previewId = inputId.replace('-', '-preview-');
+                const imgElement = document.getElementById(previewId + '-img');
+                imgElement.src = url;
+                imgElement.classList.remove('hidden');
+            }
+        }
+
+        async function saveHeroSection() {
+            const config = JSON.parse(localStorage.getItem('africhic-homepage-config')) || getDefaultHomepageConfig();
+            config.hero.title = document.getElementById('hero-title').value;
+            config.hero.subtitle = document.getElementById('hero-subtitle').value;
+            let heroImage = document.getElementById('hero-image').value;
+            
+            // Upload image to cloud if it's Base64
+            if (heroImage.startsWith('data:') && window.syncEnabled) {
+                heroImage = await uploadImageToCloud(heroImage, 'homepage/hero-image.jpg');
+            }
+            
+            config.hero.image = heroImage;
+            config.hero.updatedAt = new Date().toISOString();
+            
+            localStorage.setItem('africhic-homepage-config', JSON.stringify(config));
+            
+            // Sync to cloud
+            if (window.syncEnabled && window.db && window.currentAdminUser) {
+                try {
+                    await window.db.collection('stores').doc(window.currentAdminUser.email)
+                        .collection('config').doc('homepage').set(config);
+                    console.log('[CloudSync] ✓ Homepage config synced');
+                } catch (error) {
+                    console.error('[CloudSync] Config sync failed:', error.message);
+                }
+            }
+            
+            alert('✓ Hero section saved successfully!');
+        }
+
+        function saveLatestArrivals() {
+            const config = JSON.parse(localStorage.getItem('africhic-homepage-config')) || getDefaultHomepageConfig();
+            config.latestArrivals.title = document.getElementById('latest-title').value;
+            config.latestArrivals.productIds = getSelectedProducts('latest-products').slice(0, 6);
+            
+            localStorage.setItem('africhic-homepage-config', JSON.stringify(config));
+            alert('✓ Latest Arrivals section saved successfully!');
+        }
+
+        function saveNewArrivals() {
+            const config = JSON.parse(localStorage.getItem('africhic-homepage-config')) || getDefaultHomepageConfig();
+            config.newArrivals.title = document.getElementById('new-title').value;
+            config.newArrivals.productIds = getSelectedProducts('new-products').slice(0, 8);
+            
+            localStorage.setItem('africhic-homepage-config', JSON.stringify(config));
+            alert('✓ New Arrivals section saved successfully!');
+        }
+
+        function saveTrending() {
+            const config = JSON.parse(localStorage.getItem('africhic-homepage-config')) || getDefaultHomepageConfig();
+            config.trending.title = document.getElementById('trending-title').value;
+            config.trending.description = document.getElementById('trending-description').value;
+            config.trending.productIds = getSelectedProducts('trending-products').slice(0, 4);
+            
+            localStorage.setItem('africhic-homepage-config', JSON.stringify(config));
+            alert('✓ Trending section saved successfully!');
+        }
+
+        function resetHomepage() {
+            if (confirm('Reset all homepage sections to default? This cannot be undone.')) {
+                localStorage.removeItem('africhic-homepage-config');
+                loadHomepageConfig();
+                alert('✓ Homepage reset to default!');
+            }
+        }
+
+        // Initialize homepage config on tab switch
+        const originalSwitchTab = switchTab;
+        window.switchTab = function(tabName) {
+            originalSwitchTab(tabName);
+            if (tabName === 'homepage') {
+                loadHomepageConfig();
+            }
+        };
+
+        // Make functions globally available
+        window.previewImage = previewImage;
+        window.saveHeroSection = saveHeroSection;
+        window.saveLatestArrivals = saveLatestArrivals;
+        window.saveNewArrivals = saveNewArrivals;
+        window.saveTrending = saveTrending;
+        window.resetHomepage = resetHomepage;
+        window.addCategoryItem = addCategoryItem;
+        window.updateCategory = updateCategory;
+        window.removeCategory = removeCategory;
+        window.handleCategoryImageUpload = handleCategoryImageUpload;
+        window.saveCategories = saveCategories;
+        window.loadHomepageConfig = loadHomepageConfig;
+
+        // Check Firebase when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('[Admin] Page loaded');
+            console.log('[Admin] Initializing admin panel...');
+            
+            // Initialize the login screen
+            initAdmin();
+            
+            const statusEl = document.getElementById('firebase-status');
+            
+            console.log('[Admin] Firebase status:');
+            console.log('[Admin] - window.firebaseReady:', window.firebaseReady);
+            console.log('[Admin] - window.firebaseMode:', window.firebaseMode);
+            console.log('[Admin] - window.auth:', typeof window.auth);
+            console.log('[Admin] - window.db:', typeof window.db);
+            
+            if (window.firebaseReady && window.auth && window.db) {
+                console.log('[Admin] ✓ Firebase is ready');
+                if (statusEl) {
+                    statusEl.innerHTML = '<p style="color: #166534;">✓ Firebase Connected</p>';
+                }
+            } else {
+                console.log('[Admin] Firebase unavailable, using local authentication');
+                if (statusEl) {
+                    statusEl.innerHTML = '<p style="color: #1e40af;">✓ Ready to login</p>';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

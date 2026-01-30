@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Africhic Orders</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="firestore-sync.js"></script>
+    <script src="orders-manager.js"></script>
+    <script src="sync-manager.js"></script>
+    <style>
+        :root { --brand-gold: #D4AF37; }
+        .text-brand-gold { color: #D4AF37; }
+        .bg-brand-gold { background-color: #D4AF37; }
+        .status-completed { background-color: #dcfce7; color: #166534; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: bold; }
+        .status-pending { background-color: #fef3c7; color: #92400e; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: bold; }
+        .status-failed { background-color: #fee2e2; color: #991b1b; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <nav class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-brand-gold">AFRICHIC ADMIN</h1>
+            <div class="space-x-4 flex items-center">
+                <!-- Notifications Bell -->
+                <div class="relative group">
+                    <button id="notification-bell" class="text-2xl text-gray-600 hover:text-brand-gold transition relative">
+                        <i class="fa-solid fa-bell"></i>
+                        <span id="notification-badge" class="absolute top-0 right-0 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+                    </button>
+                    <!-- Notifications Dropdown -->
+                    <div id="notifications-dropdown" class="hidden absolute right-0 top-full mt-2 w-80 bg-white rounded-sm shadow-lg border border-gray-200 max-h-96 overflow-y-auto z-40">
+                        <div class="p-4 border-b">
+                            <h3 class="font-bold text-gray-800">Recent Orders</h3>
+                        </div>
+                        <div id="notifications-list" class="divide-y">
+                            <!-- Notifications will populate here -->
+                        </div>
+                    </div>
+                </div>
+
+                <a href="admin-products.html" class="text-sm font-medium text-gray-600 hover:text-brand-gold transition">
+                    <i class="fa-solid fa-cube mr-1"></i> Manage Products
+                </a>
+                <a href="index.html" class="text-sm font-medium text-gray-600 hover:text-brand-gold">Back to Store</a>
+                <button onclick="exportOrders()" class="bg-brand-gold text-white px-4 py-2 rounded hover:bg-yellow-600 transition">
+                    <i class="fa-solid fa-download mr-2"></i> Export Orders
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Dashboard Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white p-6 rounded-sm shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm">Total Orders</p>
+                        <p class="text-3xl font-bold text-gray-800" id="stat-total">0</p>
+                    </div>
+                    <i class="fa-solid fa-shopping-bag text-3xl text-gray-300"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-sm shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm">Completed</p>
+                        <p class="text-3xl font-bold text-green-600" id="stat-completed">0</p>
+                    </div>
+                    <i class="fa-solid fa-check-circle text-3xl text-green-300"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-sm shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm">Pending</p>
+                        <p class="text-3xl font-bold text-yellow-600" id="stat-pending">0</p>
+                    </div>
+                    <i class="fa-solid fa-hourglass-end text-3xl text-yellow-300"></i>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-sm shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm">Total Revenue</p>
+                        <p class="text-2xl font-bold text-brand-gold" id="stat-revenue">R 0.00</p>
+                    </div>
+                    <i class="fa-solid fa-chart-line text-3xl text-gray-300"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-white p-4 rounded-sm shadow-md mb-6 flex gap-4 items-end flex-wrap">
+            <div>
+                <label class="block text-sm font-medium mb-1">Filter by Status</label>
+                <select id="filter-status" onchange="applyFilters()" class="px-3 py-2 border border-gray-300 rounded">
+                    <option value="">All Statuses</option>
+                    <option value="completed">Completed</option>
+                    <option value="pending">Pending</option>
+                    <option value="failed">Failed</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Filter by Delivery</label>
+                <select id="filter-delivery" onchange="applyFilters()" class="px-3 py-2 border border-gray-300 rounded">
+                    <option value="">All Methods</option>
+                    <option value="home_delivery">Home Delivery</option>
+                    <option value="store_pickup">Store Pickup</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Search Customer</label>
+                <input type="text" id="search-customer" onkeyup="applyFilters()" placeholder="Name or email..." class="px-3 py-2 border border-gray-300 rounded">
+            </div>
+            <button onclick="clearFilters()" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">Clear Filters</button>
+        </div>
+
+        <!-- Orders Table -->
+        <div class="bg-white rounded-sm shadow-md overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-gray-100 border-b">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-bold">Order ID</th>
+                            <th class="px-4 py-3 text-left font-bold">Date</th>
+                            <th class="px-4 py-3 text-left font-bold">Customer</th>
+                            <th class="px-4 py-3 text-left font-bold">Contact</th>
+                            <th class="px-4 py-3 text-left font-bold">Delivery</th>
+                            <th class="px-4 py-3 text-left font-bold">Total</th>
+                            <th class="px-4 py-3 text-left font-bold">Status</th>
+                            <th class="px-4 py-3 text-left font-bold">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-table-body">
+                        <!-- Orders will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="no-orders-msg" class="hidden text-center py-10 text-gray-500">
+                No orders found.
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Detail Modal -->
+    <div id="order-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-sm shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="bg-brand-gold text-white p-6 flex justify-between items-center sticky top-0">
+                <h2 class="text-xl font-bold">Order Details</h2>
+                <button onclick="closeOrderModal()" class="text-xl cursor-pointer">&times;</button>
+            </div>
+
+            <div id="modal-content" class="p-6">
+                <!-- Order details will be populated here -->
+            </div>
+
+            <div class="p-6 border-t bg-gray-50 flex gap-3 flex-wrap">
+                <select id="modal-status-select" class="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded">
+                    <option value="completed">Completed</option>
+                    <option value="pending">Pending</option>
+                    <option value="shipped">Shipped</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="failed">Failed</option>
+                </select>
+                <button onclick="updateOrderStatus()" class="bg-brand-gold text-white px-6 py-2 rounded hover:bg-yellow-600 transition">
+                    Update Status
+                </button>
+                <button id="tracking-btn" onclick="openTrackingModal()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition hidden">
+                    <i class="fa-solid fa-map"></i> Add Tracking
+                </button>
+                <button id="tracking-update-btn" onclick="openTrackingUpdateModal()" class="bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700 transition hidden">
+                    <i class="fa-solid fa-pencil"></i> Update Status
+                </button>
+                <button id="collection-btn" onclick="openCollectionModal()" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition hidden">
+                    <i class="fa-solid fa-check-circle"></i> Mark Ready
+                </button>
+                <button onclick="closeOrderModal()" class="bg-gray-300 text-gray-800 px-6 py-2 rounded hover:bg-gray-400">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tracking Update Modal -->
+    <div id="tracking-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-sm shadow-lg max-w-md w-full">
+            <div class="bg-blue-600 text-white p-6 flex justify-between items-center">
+                <h2 class="text-xl font-bold">Add Delivery Tracking</h2>
+                <button onclick="closeTrackingModal()" class="text-xl cursor-pointer">&times;</button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-bold mb-2">Tracking Number *</label>
+                    <input type="text" id="tracking-number" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-600" placeholder="e.g., TRK123456789">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold mb-2">Carrier *</label>
+                    <select id="tracking-carrier" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-600">
+                        <option value="">Select Carrier</option>
+                        <option value="Courier Guy">Courier Guy</option>
+                        <option value="Road Runner">Road Runner</option>
+                        <option value="Fastway">Fastway</option>
+                        <option value="DHL">DHL</option>
+                        <option value="Uber Eats">Uber Eats</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold mb-2">Estimated Delivery Date</label>
+                    <input type="date" id="delivery-date" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-600">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold mb-2">Additional Message (Optional)</label>
+                    <textarea id="tracking-message" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-600" rows="3" placeholder="e.g., Your order is out for delivery today!"></textarea>
+                </div>
+
+                <div class="bg-blue-50 p-3 rounded text-sm text-blue-800">
+                    <i class="fa-solid fa-info-circle mr-2"></i>
+                    Customer will be notified via WhatsApp with tracking details.
+                </div>
+
+                <div class="flex gap-3">
+                    <button onclick="sendTrackingUpdate()" class="flex-1 bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">
+                        Send Update
+                    </button>
+                    <button onclick="closeTrackingModal()" class="flex-1 bg-gray-300 text-gray-800 py-2 rounded font-bold hover:bg-gray-400">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Collection Ready Modal -->
+    <div id="collection-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-sm shadow-lg max-w-md w-full">
+            <div class="bg-green-600 text-white p-6 flex justify-between items-center">
+                <h2 class="text-xl font-bold">Parcel Ready for Collection</h2>
+                <button onclick="closeCollectionModal()" class="text-xl cursor-pointer">&times;</button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-bold mb-2">Ready Date *</label>
+                    <input type="date" id="collection-date" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-green-600">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold mb-2">Store Opening Times</label>
+                    <div class="space-y-2">
+                        <div>
+                            <label class="text-xs font-medium">Monday - Friday</label>
+                            <input type="text" id="store-hours-weekday" class="w-full px-3 py-2 border border-gray-300 rounded" placeholder="e.g., 9:00 AM - 6:00 PM">
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium">Saturday</label>
+                            <input type="text" id="store-hours-saturday" class="w-full px-3 py-2 border border-gray-300 rounded" placeholder="e.g., 10:00 AM - 5:00 PM">
+                        </div>
+                        <div>
+                            <label class="text-xs font-medium">Sunday</label>
+                            <input type="text" id="store-hours-sunday" class="w-full px-3 py-2 border border-gray-300 rounded" placeholder="e.g., Closed">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold mb-2">Additional Instructions (Optional)</label>
+                    <textarea id="collection-message" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-green-600" rows="3" placeholder="e.g., Please bring ID for verification. Store address: 123 Main St..."></textarea>
+                </div>
+
+                <div class="bg-green-50 p-3 rounded text-sm text-green-800">
+                    <i class="fa-solid fa-info-circle mr-2"></i>
+                    Customer will be notified via WhatsApp with collection details and store hours.
+                </div>
+
+                <div class="flex gap-3">
+                    <button onclick="sendCollectionUpdate()" class="flex-1 bg-green-600 text-white py-2 rounded font-bold hover:bg-green-700">
+                        Send Update
+                    </button>
+                    <button onclick="closeCollectionModal()" class="flex-1 bg-gray-300 text-gray-800 py-2 rounded font-bold hover:bg-gray-400">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Tracking Status Update Modal -->
+    <div id="tracking-update-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-sm shadow-lg max-w-md w-full">
+            <div class="bg-purple-600 text-white p-6 flex justify-between items-center">
+                <h2 class="text-xl font-bold">Add Tracking Update</h2>
+                <button onclick="closeTrackingUpdateModal()" class="text-xl cursor-pointer">&times;</button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-bold mb-2">Status *</label>
+                    <select id="update-status" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-purple-600">
+                        <option value="">Select Status</option>
+                        <option value="in_transit">In Transit</option>
+                        <option value="out_for_delivery">Out for Delivery</option>
+                        <option value="delivery_attempted">Delivery Attempted</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="delayed">Delayed</option>
+                        <option value="exception">Exception/Issue</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold mb-2">Message *</label>
+                    <textarea id="update-message" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-purple-600" rows="3" placeholder="e.g., Package is out for delivery today"></textarea>
+                </div>
+
+                <div class="bg-purple-50 p-3 rounded text-sm text-purple-800">
+                    <i class="fa-solid fa-info-circle mr-2"></i>
+                    This update will be added to tracking history and customer will see it in their order tracking.
+                </div>
+
+                <div class="flex gap-3">
+                    <button onclick="addTrackingUpdate()" class="flex-1 bg-purple-600 text-white py-2 rounded font-bold hover:bg-purple-700">
+                        Add Update
+                    </button>
+                    <button onclick="closeTrackingUpdateModal()" class="flex-1 bg-gray-300 text-gray-800 py-2 rounded font-bold hover:bg-gray-400">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allOrders = [];
+        let filteredOrders = [];
+        let currentOrderId = null;
+
+        // Toggle notifications dropdown
+        document.getElementById('notification-bell').addEventListener('click', function() {
+            const dropdown = document.getElementById('notifications-dropdown');
+            dropdown.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const bell = document.getElementById('notification-bell');
+            const dropdown = document.getElementById('notifications-dropdown');
+            if (!bell.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        // Load orders using OrderManager
+        function loadAllOrders() {
+            // Load initial orders from OrderManager (uses Firestore with localStorage fallback)
+            orderManager.getAllOrders().then(orders => {
+                allOrders = orders;
+                localStorage.setItem('africhic-orders', JSON.stringify(orders));
+                console.log('✓ Orders loaded:', orders.length);
+                applyFilters();
+                updateStats();
+                loadNotifications();
+                
+                // Set up real-time listener for Firestore updates (only once)
+                if (!window.orderListenerActive) {
+                    window.orderListenerActive = true;
+                    firestoreSync.listenToOrders((updatedOrders) => {
+                        allOrders = updatedOrders;
+                        localStorage.setItem('africhic-orders', JSON.stringify(updatedOrders));
+                        console.log('✓ Real-time order sync:', updatedOrders.length);
+                        applyFilters();
+                        updateStats();
+                        loadNotifications();
+                    });
+                }
+            }).catch(error => {
+                console.error('Error loading orders:', error);
+                // Fallback to localStorage
+                allOrders = JSON.parse(localStorage.getItem('africhic-orders')) || [];
+                applyFilters();
+                updateStats();
+            });
+        }
+
+        // Load and display notifications
+        async function loadNotifications() {
+            const notifications = await orderManager.getAdminNotifications(10);
+            const badge = document.getElementById('notification-badge');
+            const unreadCount = notifications.filter(n => !n.read).length;
+
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+
+            const notificationsList = document.getElementById('notifications-list');
+            if (notifications.length === 0) {
+                notificationsList.innerHTML = '<div class="p-4 text-center text-gray-500">No notifications yet</div>';
+                return;
+            }
+
+            notificationsList.innerHTML = notifications.map(notif => `
+                <div class="p-4 ${notif.read ? 'bg-white' : 'bg-blue-50'} hover:bg-gray-50 transition cursor-pointer" onclick="viewOrderDetails('${notif.orderId}'); markNotificationRead('${notif.id}')">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <p class="font-bold text-gray-800">${notif.customerName}</p>
+                            <p class="text-sm text-gray-600">R${notif.orderTotal.toFixed(2)} - ${notif.orderItems} item(s)</p>
+                            <p class="text-xs text-gray-500 mt-1">${new Date(notif.createdAt).toLocaleTimeString()}</p>
+                        </div>
+                        ${!notif.read ? '<span class="text-blue-600 text-xs font-bold">NEW</span>' : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Mark notification as read
+        async function markNotificationRead(notificationId) {
+            await orderManager.markNotificationAsRead(notificationId);
+            loadNotifications();
+        }
+
+        // Listen for real-time order updates
+        window.addEventListener('ordersUpdated', function(event) {
+            console.log('Real-time order update received');
+            allOrders = event.detail.orders;
+            applyFilters();
+            updateStats();
+            loadNotifications();
+            
+            // Show browser notification for new orders
+            const unread = allOrders.filter(o => !o.notified);
+            if (unread.length > 0) {
+                const latestOrder = unread[0];
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('New Order! 🎉', {
+                        body: `${latestOrder.customer_name} - R${latestOrder.total.toFixed(2)}`,
+                        tag: 'new-order-' + latestOrder.id,
+                        requireInteraction: true
+                    });
+                }
+            }
+        });
+
+        // Listen for notification updates
+        window.addEventListener('notificationsUpdated', function(event) {
+            console.log('Notifications updated');
+            loadNotifications();
+        });
+
+        // Request notification permission
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    console.log('✓ Notifications enabled');
+                }
+            });
+        }
+
+        function updateStats() {
+            const completed = allOrders.filter(o => o.status === 'completed').length;
+            const pending = allOrders.filter(o => o.status === 'pending').length;
+            const total = allOrders.length;
+            const revenue = allOrders
+                .filter(o => o.status === 'completed')
+                .reduce((sum, o) => sum + o.total, 0);
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-completed').textContent = completed;
+            document.getElementById('stat-pending').textContent = pending;
+            document.getElementById('stat-revenue').textContent = `R ${revenue.toFixed(2)}`;
+        }
+
+        function applyFilters() {
+            const statusFilter = document.getElementById('filter-status').value;
+            const deliveryFilter = document.getElementById('filter-delivery').value;
+            const searchText = document.getElementById('search-customer').value.toLowerCase();
+
+            filteredOrders = allOrders.filter(order => {
+                let match = true;
+
+                if (statusFilter && order.status !== statusFilter) match = false;
+                if (deliveryFilter && order.delivery_method !== deliveryFilter) match = false;
+                if (searchText && !order.customer_name.toLowerCase().includes(searchText) && 
+                    !order.customer_email.toLowerCase().includes(searchText)) match = false;
+
+                return match;
+            });
+
+            renderOrdersTable();
+        }
+
+        function clearFilters() {
+            document.getElementById('filter-status').value = '';
+            document.getElementById('filter-delivery').value = '';
+            document.getElementById('search-customer').value = '';
+            applyFilters();
+        }
+
+        function renderOrdersTable() {
+            const tbody = document.getElementById('orders-table-body');
+            const noOrders = document.getElementById('no-orders-msg');
+
+            if (filteredOrders.length === 0) {
+                tbody.innerHTML = '';
+                noOrders.classList.remove('hidden');
+                return;
+            }
+
+            noOrders.classList.add('hidden');
+            tbody.innerHTML = filteredOrders.map(order => `
+                <tr class="border-b hover:bg-gray-50 transition">
+                    <td class="px-4 py-3 font-mono text-xs text-blue-600 cursor-pointer hover:underline" onclick="viewOrderDetails('${order.id}')">${order.id}</td>
+                    <td class="px-4 py-3 text-xs">${order.date}</td>
+                    <td class="px-4 py-3"><strong>${order.customer_name}</strong></td>
+                    <td class="px-4 py-3 text-xs">
+                        <p>${order.customer_email}</p>
+                        <p class="text-gray-600">${order.customer_phone}</p>
+                    </td>
+                    <td class="px-4 py-3 text-xs">
+                        ${order.delivery_method === 'home_delivery' 
+                            ? '<span class="text-blue-600"><i class="fa-solid fa-truck"></i> Home</span>' 
+                            : '<span class="text-green-600"><i class="fa-solid fa-store"></i> Pickup</span>'}
+                    </td>
+                    <td class="px-4 py-3 font-bold">R ${order.total.toFixed(2)}</td>
+                    <td class="px-4 py-3">
+                        <span class="status-${order.status}">${order.status.toUpperCase()}</span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <button onclick="viewOrderDetails('${order.id}')" class="text-blue-600 hover:underline text-xs mr-2">
+                            <i class="fa-solid fa-eye"></i> View
+                        </button>
+                        <button onclick="contactCustomer('${order.id}')" class="text-green-600 hover:underline text-xs">
+                            <i class="fa-brands fa-whatsapp"></i> Chat
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function viewOrderDetails(orderId) {
+            currentOrderId = orderId;
+            const order = allOrders.find(o => o.id === orderId);
+
+            if (!order) return;
+
+            const itemsHtml = order.items.map(item => 
+                `<tr class="border-b"><td class="px-4 py-2">${item.name}</td><td class="text-right px-4 py-2">R ${item.price.toFixed(2)}</td></tr>`
+            ).join('');
+
+            const addressHtml = order.delivery_method === 'home_delivery' 
+                ? `<p>${order.delivery_address?.street}</p><p>${order.delivery_address?.city}, ${order.delivery_address?.province} ${order.delivery_address?.postal_code}</p>`
+                : '<p>Collect from store</p>';
+
+            // Show tracking info if available
+            let trackingHtml = '';
+            if (order.tracking_info) {
+                trackingHtml = `
+                    <div class="bg-blue-50 p-4 rounded-sm mb-6 border-l-4 border-blue-600">
+                        <h3 class="font-bold text-blue-800 mb-2"><i class="fa-solid fa-map"></i> Tracking Information</h3>
+                        <p><strong>Number:</strong> ${order.tracking_info.tracking_number}</p>
+                        <p><strong>Carrier:</strong> ${order.tracking_info.carrier}</p>
+                        <p><strong>Estimated Delivery:</strong> ${order.tracking_info.delivery_date || 'TBD'}</p>
+                        ${order.tracking_info.message ? `<p><strong>Message:</strong> ${order.tracking_info.message}</p>` : ''}
+                    </div>
+                `;
+            }
+
+            // Show collection info if available
+            let collectionHtml = '';
+            if (order.collection_info) {
+                collectionHtml = `
+                    <div class="bg-green-50 p-4 rounded-sm mb-6 border-l-4 border-green-600">
+                        <h3 class="font-bold text-green-800 mb-2"><i class="fa-solid fa-check-circle"></i> Collection Ready</h3>
+                        <p><strong>Ready Date:</strong> ${order.collection_info.ready_date}</p>
+                        <p><strong>Mon-Fri:</strong> ${order.collection_info.weekday_hours}</p>
+                        <p><strong>Saturday:</strong> ${order.collection_info.saturday_hours}</p>
+                        <p><strong>Sunday:</strong> ${order.collection_info.sunday_hours}</p>
+                        ${order.collection_info.message ? `<p class="mt-2"><strong>Instructions:</strong> ${order.collection_info.message}</p>` : ''}
+                    </div>
+                `;
+            }
+
+            const modalContent = `
+                <div class="grid grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <p class="text-gray-600 text-sm mb-1">Order ID</p>
+                        <p class="font-bold">${order.id}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600 text-sm mb-1">Date</p>
+                        <p class="font-bold">${order.date}</p>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-4 rounded-sm mb-6">
+                    <h3 class="font-bold mb-3">Customer Information</h3>
+                    <p><strong>Name:</strong> ${order.customer_name}</p>
+                    <p><strong>Email:</strong> ${order.customer_email}</p>
+                    <p><strong>Phone:</strong> ${order.customer_phone}</p>
+                </div>
+
+                <div class="bg-gray-50 p-4 rounded-sm mb-6">
+                    <h3 class="font-bold mb-3">Delivery Information</h3>
+                    <p><strong>Method:</strong> ${order.delivery_method === 'home_delivery' ? 'Home Delivery (R100)' : 'Store Pickup (Free)'}</p>
+                    <p><strong>Address:</strong></p>
+                    ${addressHtml}
+                    ${order.delivery_address?.delivery_notes ? `<p class="text-sm text-gray-600 mt-2"><strong>Notes:</strong> ${order.delivery_address.delivery_notes}</p>` : ''}
+                </div>
+
+                ${trackingHtml}
+                ${collectionHtml}
+
+                <div class="mb-6">
+                    <h3 class="font-bold mb-3">Items Ordered</h3>
+                    <table class="w-full text-sm border border-gray-300">
+                        <thead class="bg-gray-100"><tr><th class="px-4 py-2 text-left">Item</th><th class="px-4 py-2 text-right">Price</th></tr></thead>
+                        <tbody>${itemsHtml}</tbody>
+                        <tfoot>
+                            <tr class="bg-gray-100 font-bold">
+                                <td class="px-4 py-2">Total</td>
+                                <td class="text-right px-4 py-2">R ${order.total.toFixed(2)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                ${order.tracking_info && order.tracking_info.updates ? `
+                    <div class="mb-6">
+                        <h3 class="font-bold mb-3"><i class="fa-solid fa-timeline mr-2"></i>Tracking History</h3>
+                        <div class="bg-gray-50 p-4 rounded-sm">
+                            ${order.tracking_info.updates.map((update, idx) => `
+                                <div class="flex gap-3 pb-4 ${idx < order.tracking_info.updates.length - 1 ? 'border-b' : ''}">
+                                    <div class="text-center">
+                                        <div class="w-6 h-6 rounded-full bg-brand-gold text-white flex items-center justify-center text-xs font-bold">
+                                            <i class="fa-solid fa-check text-xs"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <p class="font-bold text-sm">${update.status.toUpperCase().replace(/_/g, ' ')}</p>
+                                        <p class="text-sm text-gray-600">${update.message}</p>
+                                        <p class="text-xs text-gray-500">${new Date(update.timestamp).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+
+                <div class="bg-blue-50 p-4 rounded-sm">
+                    <p><strong>Payment Method:</strong> ${order.payment_method.toUpperCase()}</p>
+                    <p><strong>Current Status:</strong> <span class="status-${order.status}">${order.status.toUpperCase()}</span></p>
+                </div>
+            `;
+
+            document.getElementById('modal-content').innerHTML = modalContent;
+            document.getElementById('modal-status-select').value = order.status;
+
+            // Show tracking/collection buttons based on delivery method
+            const trackingBtn = document.getElementById('tracking-btn');
+            const collectionBtn = document.getElementById('collection-btn');
+            const trackingUpdateBtn = document.getElementById('tracking-update-btn');
+            
+            if (order.delivery_method === 'home_delivery') {
+                trackingBtn.classList.remove('hidden');
+                collectionBtn.classList.add('hidden');
+                // Show update button if order already has tracking
+                if (order.tracking_info) {
+                    trackingUpdateBtn.classList.remove('hidden');
+                } else {
+                    trackingUpdateBtn.classList.add('hidden');
+                }
+            } else {
+                trackingBtn.classList.add('hidden');
+                collectionBtn.classList.remove('hidden');
+                trackingUpdateBtn.classList.add('hidden');
+            }
+
+            document.getElementById('order-modal').classList.remove('hidden');
+        }
+
+        function closeOrderModal() {
+            document.getElementById('order-modal').classList.add('hidden');
+            currentOrderId = null;
+        }
+
+        function updateOrderStatus() {
+            if (!currentOrderId) return;
+
+            const newStatus = document.getElementById('modal-status-select').value;
+            const orderIndex = allOrders.findIndex(o => o.id === currentOrderId);
+
+            if (orderIndex !== -1) {
+                allOrders[orderIndex].status = newStatus;
+                localStorage.setItem('africhic-orders', JSON.stringify(allOrders));
+                
+                // Update using OrderManager (syncs to Firestore automatically)
+                orderManager.updateOrderStatus(currentOrderId, newStatus).then(success => {
+                    if (success) {
+                        console.log('✓ Order status updated:', currentOrderId, '->', newStatus);
+                    }
+                });
+                
+                closeOrderModal();
+                applyFilters();
+                updateStats();
+                alert('Order status updated!');
+            }
+        }
+
+        function openTrackingModal() {
+            // Pre-fill with tomorrow's date as default
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 3);
+            document.getElementById('delivery-date').value = tomorrow.toISOString().split('T')[0];
+            document.getElementById('tracking-number').value = '';
+            document.getElementById('tracking-carrier').value = '';
+            document.getElementById('tracking-message').value = '';
+            document.getElementById('tracking-modal').classList.remove('hidden');
+        }
+
+        function closeTrackingModal() {
+            document.getElementById('tracking-modal').classList.add('hidden');
+        }
+
+        function sendTrackingUpdate() {
+            const trackingNumber = document.getElementById('tracking-number').value.trim();
+            const carrier = document.getElementById('tracking-carrier').value;
+            const deliveryDate = document.getElementById('delivery-date').value;
+            const message = document.getElementById('tracking-message').value;
+
+            if (!trackingNumber || !carrier) {
+                alert('Please fill in tracking number and carrier');
+                return;
+            }
+
+            const order = allOrders.find(o => o.id === currentOrderId);
+            if (!order) return;
+
+            // Add tracking info using OrderManager
+            orderManager.addTrackingInfo(currentOrderId, {
+                tracking_number: trackingNumber,
+                carrier: carrier,
+                estimated_delivery: deliveryDate,
+                message: message
+            }).then(success => {
+                if (success) {
+                    console.log('✓ Tracking info saved');
+                    
+                    // Send WhatsApp notification
+                    const trackingMessage = `Hi ${order.customer_name},\n\nYour order ${order.id} is on its way! 🚚\n\n📦 Tracking Number: ${trackingNumber}\n🚛 Carrier: ${carrier}\n📅 Estimated Delivery: ${deliveryDate}\n\n${message ? `📝 ${message}\n` : ''}Track your parcel for real-time updates.\n\nThank you for shopping with Africhic!`;
+                    
+                    window.open(`https://wa.me/${order.customer_phone.replace(/[^\d]/g, '')}?text=${encodeURIComponent(trackingMessage)}`, '_blank');
+                    
+                    alert('✅ Tracking information sent to customer!');
+                    closeTrackingModal();
+                    loadAllOrders();
+                }
+            });
+        }
+
+        function openCollectionModal() {
+            // Pre-fill with tomorrow's date as default
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('collection-date').value = tomorrow.toISOString().split('T')[0];
+            document.getElementById('store-hours-weekday').value = '9:00 AM - 6:00 PM';
+            document.getElementById('store-hours-saturday').value = '10:00 AM - 4:00 PM';
+            document.getElementById('store-hours-sunday').value = 'Closed';
+            document.getElementById('collection-message').value = '';
+            document.getElementById('collection-modal').classList.remove('hidden');
+        }
+
+        function closeCollectionModal() {
+            document.getElementById('collection-modal').classList.add('hidden');
+        }
+
+        function sendCollectionUpdate() {
+            const readyDate = document.getElementById('collection-date').value;
+            const weekdayHours = document.getElementById('store-hours-weekday').value.trim();
+            const saturdayHours = document.getElementById('store-hours-saturday').value.trim();
+            const sundayHours = document.getElementById('store-hours-sunday').value.trim();
+            const message = document.getElementById('collection-message').value;
+
+            if (!readyDate || !weekdayHours) {
+                alert('Please fill in ready date and store hours');
+                return;
+            }
+
+            const order = allOrders.find(o => o.id === currentOrderId);
+            if (!order) return;
+
+            // Add collection info using OrderManager
+            orderManager.addCollectionInfo(currentOrderId, {
+                ready_date: readyDate,
+                weekday_hours: weekdayHours,
+                saturday_hours: saturdayHours,
+                sunday_hours: sundayHours,
+                instructions: message
+            }).then(success => {
+                if (success) {
+                    console.log('✓ Collection info saved');
+                    
+                    // Send WhatsApp notification
+                    const collectionMessage = `Hi ${order.customer_name},\n\nYour order ${order.id} is ready for collection! 🎉\n\n📅 Ready Date: ${readyDate}\n\n🏪 Store Hours:\n📅 Mon-Fri: ${weekdayHours}\n📅 Saturday: ${saturdayHours}\n📅 Sunday: ${sundayHours}\n\n${message ? `📝 Instructions:\n${message}\n` : ''}Please come pick up your parcel at your earliest convenience.\n\nThank you for shopping with Africhic!`;
+                    
+                    window.open(`https://wa.me/${order.customer_phone.replace(/[^\d]/g, '')}?text=${encodeURIComponent(collectionMessage)}`, '_blank');
+                    
+                    alert('✅ Collection details sent to customer!');
+                    closeCollectionModal();
+                    loadAllOrders();
+                }
+            });
+        }
+
+        function contactCustomer(orderId) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order) return;
+
+            const message = `Hi ${order.customer_name}, regarding your order ${order.id} placed on ${order.date}. Your total is R${order.total.toFixed(2)}. How can I assist you?`;
+            window.open(`https://wa.me/${order.customer_phone.replace(/[^\d]/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
+        }
+
+        function openTrackingUpdateModal() {
+            document.getElementById('update-status').value = '';
+            document.getElementById('update-message').value = '';
+            document.getElementById('tracking-update-modal').classList.remove('hidden');
+        }
+
+        function closeTrackingUpdateModal() {
+            document.getElementById('tracking-update-modal').classList.add('hidden');
+        }
+
+        function addTrackingUpdate() {
+            const status = document.getElementById('update-status').value;
+            const message = document.getElementById('update-message').value.trim();
+
+            if (!status || !message) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            if (!currentOrderId) {
+                alert('No order selected');
+                return;
+            }
+
+            // Add tracking update using OrderManager
+            orderManager.addTrackingUpdate(currentOrderId, status, message).then(success => {
+                if (success) {
+                    console.log('✓ Tracking update added');
+                    alert('✅ Tracking update added successfully!');
+                    closeTrackingUpdateModal();
+                    loadAllOrders();
+                }
+            });
+        }
+
+        function exportOrders() {
+            if (allOrders.length === 0) {
+                alert('No orders to export!');
+                return;
+            }
+
+            let csv = 'Order ID,Date,Customer Name,Email,Phone,Delivery Method,City,Total,Status,Payment Method\n';
+            
+            allOrders.forEach(order => {
+                const city = order.delivery_address?.city || 'Store Pickup';
+                csv += `"${order.id}","${order.date}","${order.customer_name}","${order.customer_email}","${order.customer_phone}","${order.delivery_method}","${city}","R${order.total.toFixed(2)}","${order.status}","${order.payment_method}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `africhic-orders-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Load orders on page load
+        loadAllOrders();
+    </script>
+
+</body>
+</html>

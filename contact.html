@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact & Custom Orders | Africhic Garments</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="firestore-sync.js"></script>
+    <script src="auth.js"></script>
+    <script src="session-timeout.js"></script>
+    <script src="user-profile.js"></script>
+    <script src="modern-navbar.js"></script>
+    <style>
+        :root {
+            --brand-gold: #D4AF37;
+            --brand-earth: #3d2b1f;
+        }
+
+        /* Modern Navbar Styling */
+        .navbar {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-bottom: 1px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .nav-link {
+            position: relative;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #2c3e50;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .nav-link:hover {
+            color: var(--brand-gold);
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--brand-gold);
+            transition: width 0.3s ease;
+        }
+
+        .nav-link:hover::after {
+            width: 100%;
+        }
+
+        .nav-link-dropdown {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            min-width: 220px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            padding: 8px 0;
+            z-index: 100;
+            border: 1px solid #e0e0e0;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dropdown-menu.hidden {
+            display: none;
+        }
+
+        .dropdown-item {
+            display: block;
+            padding: 12px 20px;
+            color: #2c3e50;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .dropdown-item:hover {
+            background: #f8f9fa;
+            color: var(--brand-gold);
+            border-left-color: var(--brand-gold);
+            padding-left: 24px;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #e0e0e0;
+            margin: 4px 0;
+        }
+
+        #mobile-menu {
+            animation: slideDown 0.3s ease;
+        }
+
+        #mobile-menu.hidden {
+            display: none;
+        }
+
+        .mobile-nav-link {
+            display: block;
+            padding: 12px 16px;
+            color: #2c3e50;
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            border-left: 4px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .mobile-nav-link:hover {
+            background: #f8f9fa;
+            color: var(--brand-gold);
+            border-left-color: var(--brand-gold);
+            padding-left: 20px;
+        }
+
+        .nav-icon {
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-icon:hover {
+            color: var(--brand-gold);
+            transform: scale(1.1);
+        }
+
+        .brand-logo {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .brand-logo:hover {
+            transform: scale(1.05);
+        }
+
+        .brand-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--brand-gold);
+        }
+
+        .brand-tagline {
+            font-size: 0.65rem;
+            letter-spacing: 1.5px;
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+
+        .cart-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--brand-gold);
+            color: white;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (max-width: 767px) {
+            .dropdown-menu {
+                position: static;
+                box-shadow: none;
+                border: none;
+                border-radius: 0;
+                background: #f8f9fa;
+                margin-top: 0;
+                padding: 0;
+                border-left: 4px solid var(--brand-gold);
+            }
+
+            .nav-link::after {
+                display: none;
+            }
+
+            .brand-name {
+                font-size: 1.25rem;
+            }
+
+            .brand-tagline {
+                font-size: 0.6rem;
+            }
+        }
+
+        /* Custom Styles */
+        .section-divider {
+            height: 4px;
+            background: linear-gradient(90deg, #D4AF37 0%, transparent 100%);
+            margin: 3rem 0;
+        }
+
+        .contact-card {
+            background: white;
+            border-left: 4px solid var(--brand-gold);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .contact-card:hover {
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .form-input,
+        .form-textarea,
+        .form-select {
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--brand-gold);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .btn-submit {
+            background: var(--brand-gold);
+            color: white;
+            padding: 0.875rem 2rem;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        .btn-submit:hover {
+            background: #c19a1a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+        }
+
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+
+        .required-asterisk {
+            color: #e74c3c;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            display: none;
+            border-left: 4px solid #28a745;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            display: none;
+            border-left: 4px solid #dc3545;
+        }
+
+        .toggle-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid #e0e0e0;
+        }
+
+        .toggle-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .toggle-icon.open {
+            transform: rotate(180deg);
+        }
+
+        .toggle-content {
+            display: none;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .toggle-content.open {
+            display: block;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, #f0f4ff 0%, #fff9f0 100%);
+            border-left: 4px solid var(--brand-gold);
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+
+        .info-box-title {
+            font-weight: 600;
+            color: var(--brand-gold);
+            margin-bottom: 0.5rem;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-group:hover {
+            background: #f8f9fa;
+            border-color: var(--brand-gold);
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            accent-color: var(--brand-gold);
+        }
+
+        .file-upload-area {
+            border: 2px dashed #e0e0e0;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            background: #f9fafb;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload-area:hover {
+            border-color: var(--brand-gold);
+            background: #fffaf0;
+        }
+
+        .file-upload-area.dragover {
+            border-color: var(--brand-gold);
+            background: #fffaf0;
+        }
+
+        .upload-icon {
+            font-size: 2rem;
+            color: var(--brand-gold);
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+
+    <!-- Modern Navigation Bar -->
+    <nav class="navbar sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Brand Logo -->
+                <a href="index.html" class="brand-logo">
+                    <span class="brand-name">AFRICHIC</span>
+                    <span class="brand-tagline">GARMENTS</span>
+                </a>
+
+                <!-- Desktop Navigation Menu -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="index.html" class="nav-link">Home</a>
+
+                    <!-- Shop Dropdown -->
+                    <div class="nav-link-dropdown group">
+                        <a href="shop.html" class="nav-link flex items-center gap-1">
+                            Shop
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </a>
+                        <div class="dropdown-menu hidden group-hover:block absolute left-0 mt-0">
+                            <a href="shop.html" class="dropdown-item">
+                                <i class="fas fa-store mr-2"></i> All Products
+                            </a>
+                            <a href="shop.html?cat=ladies" class="dropdown-item">
+                                <i class="fas fa-female mr-2"></i> Women's Collection
+                            </a>
+                            <a href="shop.html?cat=men" class="dropdown-item">
+                                <i class="fas fa-male mr-2"></i> Men's Collection
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="shop.html?cat=new" class="dropdown-item">
+                                <i class="fas fa-sparkles mr-2"></i> New Arrivals
+                            </a>
+                        </div>
+                    </div>
+
+                    <a href="shop.html" class="nav-link">Collections</a>
+                    <a href="contact.html" class="nav-link">Contact</a>
+                </div>
+
+                <!-- Right Side Icons -->
+                <div class="flex items-center space-x-4 md:space-x-6">
+                    <!-- Search Icon -->
+                    <button class="nav-icon" title="Search">
+                        <i class="fas fa-search"></i>
+                    </button>
+
+                    <!-- Orders Icon -->
+                    <a href="orders.html" class="nav-icon relative" title="Order History">
+                        <i class="fas fa-receipt"></i>
+                    </a>
+
+                    <!-- User Profile Dropdown (Logged In) -->
+                    <div id="user-profile-dropdown" class="nav-link-dropdown hidden group">
+                        <button class="nav-icon flex items-center gap-2 group" title="Profile Menu">
+                            <div id="profile-avatar" class="hidden w-8 h-8 rounded-full bg-brand-gold text-white text-xs font-bold flex items-center justify-center">U</div>
+                            <i id="profile-icon" class="fas fa-user"></i>
+                            <i class="fas fa-chevron-down text-xs hidden md:inline"></i>
+                        </button>
+                        <div id="navbar-profile-menu" class="dropdown-menu hidden group-hover:block absolute right-0 mt-2 w-56">
+                            <div id="profile-header" class="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                                <p id="profile-name" class="font-semibold text-gray-900">User Name</p>
+                                <p id="profile-email" class="text-xs text-gray-600 truncate">user@email.com</p>
+                            </div>
+                            <a href="profile.html" class="dropdown-item">
+                                <i class="fas fa-user mr-2"></i> My Profile
+                            </a>
+                            <a href="orders.html" class="dropdown-item">
+                                <i class="fas fa-receipt mr-2"></i> Order History
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <button onclick="userProfileDisplay.logout()" class="w-full text-left dropdown-item text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-400">
+                                <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Profile Icon (Not Logged In) -->
+                    <a id="login-icon" href="login.html" class="nav-icon" title="Login">
+                        <i class="fas fa-user"></i>
+                    </a>
+
+                    <!-- Cart Icon -->
+                    <a href="cart.html" class="nav-icon relative" title="Shopping Cart">
+                        <i class="fas fa-shopping-bag"></i>
+                        <span class="cart-badge">0</span>
+                    </a>
+
+                    <!-- Mobile Menu Button -->
+                    <button id="mobile-menu-btn" class="md:hidden nav-icon" title="Menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Navigation Menu -->
+            <div id="mobile-menu" class="md:hidden hidden border-t border-gray-200 bg-white">
+                <a href="index.html" class="mobile-nav-link">
+                    <i class="fas fa-home mr-2"></i> Home
+                </a>
+
+                <!-- Mobile Shop Dropdown -->
+                <div class="nav-link-dropdown w-full">
+                    <a href="#" class="mobile-nav-link flex justify-between items-center" onclick="event.preventDefault();">
+                        <span><i class="fas fa-shopping-bag mr-2"></i> Shop</span>
+                        <i class="fas fa-chevron-down text-xs"></i>
+                    </a>
+                    <div class="dropdown-menu hidden">
+                        <a href="shop.html" class="mobile-dropdown-item">
+                            <i class="fas fa-store mr-2"></i> All Products
+                        </a>
+                        <a href="shop.html?cat=ladies" class="mobile-dropdown-item">
+                            <i class="fas fa-female mr-2"></i> Women's Collection
+                        </a>
+                        <a href="shop.html?cat=men" class="mobile-dropdown-item">
+                            <i class="fas fa-male mr-2"></i> Men's Collection
+                        </a>
+                        <a href="shop.html?cat=new" class="mobile-dropdown-item">
+                            <i class="fas fa-sparkles mr-2"></i> New Arrivals
+                        </a>
+                    </div>
+                </div>
+
+                <a href="shop.html" class="mobile-nav-link">
+                    <i class="fas fa-th-large mr-2"></i> Collections
+                </a>
+
+                <a href="contact.html" class="mobile-nav-link">
+                    <i class="fas fa-envelope mr-2"></i> Contact
+                </a>
+
+                <div class="border-t border-gray-200 mt-2 pt-2">
+                    <div id="mobile-user-section" class="hidden">
+                        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                            <p id="mobile-profile-name" class="font-semibold text-gray-900">User Name</p>
+                            <p id="mobile-profile-email" class="text-xs text-gray-600 truncate">user@email.com</p>
+                        </div>
+                        <a href="profile.html" class="mobile-nav-link">
+                            <i class="fas fa-user mr-2"></i> My Profile
+                        </a>
+                        <a href="orders.html" class="mobile-nav-link">
+                            <i class="fas fa-receipt mr-2"></i> My Orders
+                        </a>
+                        <button onclick="userProfileDisplay.logout()" class="w-full text-left mobile-nav-link text-red-600 hover:bg-red-50">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                        </button>
+                    </div>
+                    <a id="mobile-login-link" href="login.html" class="mobile-nav-link">
+                        <i class="fas fa-user mr-2"></i> Login / Register
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <!-- Page Header -->
+        <div class="mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Contact & Custom Orders</h1>
+            <p class="text-lg text-gray-600">Get in touch with us or request a custom-made garment tailored to your style</p>
+        </div>
+
+        <!-- Contact Information Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <!-- Email Card -->
+            <div class="contact-card p-6 rounded-lg">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-envelope text-2xl text-brand-gold"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900">Email</h3>
+                </div>
+                <p class="text-gray-600">info@africhicgarments.co.za</p>
+                <p class="text-gray-600">support@africhicgarments.co.za</p>
+                <p class="text-sm text-gray-500 mt-2">Response within 24 hours</p>
+            </div>
+
+            <!-- Phone Card -->
+            <div class="contact-card p-6 rounded-lg">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-phone text-2xl text-brand-gold"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900">Phone</h3>
+                </div>
+                <p class="text-gray-600">+27 63 561 7298</p>
+                <p class="text-gray-600">+27 74 829 2859</p>
+                <p class="text-sm text-gray-500 mt-2">Mon-Fri, 9AM-6PM EST</p>
+            </div>
+
+            <!-- Address Card -->
+            <div class="contact-card p-6 rounded-lg">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-map-marker-alt text-2xl text-brand-gold"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900">Address</h3>
+                </div>
+                <p class="text-gray-600">654 Borzoi street, Garsfonteint ext 10</p>
+                <p class="text-gray-600">Pretoria, Gauteng</p>
+                <p class="text-sm text-gray-500 mt-2">Visit our showroom</p>
+            </div>
+        </div>
+
+        <!-- Section Divider -->
+        <div class="section-divider"></div>
+
+        <!-- Contact Form Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column - Info -->
+            <div class="lg:col-span-1">
+                <div class="sticky top-24">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-6">Get in Touch</h2>
+                    
+                    <div class="info-box">
+                        <div class="info-box-title">General Inquiries</div>
+                        <p class="text-sm text-gray-700">Have questions about our products or services? Contact us anytime.</p>
+                    </div>
+
+                    <div class="info-box">
+                        <div class="info-box-title">Quick Response</div>
+                        <p class="text-sm text-gray-700">We typically respond to all inquiries within 24 hours during business days.</p>
+                    </div>
+
+                    <div class="info-box">
+                        <div class="info-box-title">Custom Orders</div>
+                        <p class="text-sm text-gray-700">Interested in a custom-made garment? Use the form below to share your vision.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Forms -->
+            <div class="lg:col-span-2">
+                <!-- Contact Form -->
+                <div class="bg-white rounded-lg shadow-sm p-8 mb-8">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-6">
+                        <i class="fas fa-envelope text-brand-gold mr-2"></i>General Inquiry
+                    </h3>
+
+                    <div id="contact-success" class="success-message">
+                        <i class="fas fa-check-circle mr-2"></i>Thank you! We'll get back to you soon.
+                    </div>
+                    <div id="contact-error" class="error-message">
+                        <i class="fas fa-exclamation-circle mr-2"></i><span id="error-text"></span>
+                    </div>
+
+                    <form id="contact-form">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    Full Name <span class="required-asterisk">*</span>
+                                </label>
+                                <input type="text" name="name" required class="form-input w-full" placeholder="John Doe">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">
+                                    Email Address <span class="required-asterisk">*</span>
+                                </label>
+                                <input type="email" name="email" required class="form-input w-full" placeholder="john@example.com">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                Phone Number
+                            </label>
+                            <input type="tel" name="phone" class="form-input w-full" placeholder="+1 (555) 123-4567">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                Subject <span class="required-asterisk">*</span>
+                            </label>
+                            <select name="subject" required class="form-select w-full">
+                                <option value="">Select a subject...</option>
+                                <option value="general">General Inquiry</option>
+                                <option value="bulk">Bulk Order</option>
+                                <option value="partnership">Partnership Opportunity</option>
+                                <option value="feedback">Feedback</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                Message <span class="required-asterisk">*</span>
+                            </label>
+                            <textarea name="message" required class="form-textarea w-full" placeholder="Tell us how we can help..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn-submit w-full md:w-auto">
+                            <i class="fas fa-paper-plane mr-2"></i>Send Message
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Custom Order Form -->
+                <div class="bg-white rounded-lg shadow-sm p-8">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">
+                        <i class="fas fa-star text-brand-gold mr-2"></i>Custom Garment Request
+                    </h3>
+                    <p class="text-gray-600 mb-6">Create a unique piece tailored to your preferences</p>
+
+                    <div id="custom-success" class="success-message">
+                        <i class="fas fa-check-circle mr-2"></i>Your custom request has been submitted! We'll send you a quote soon.
+                    </div>
+                    <div id="custom-error" class="error-message">
+                        <i class="fas fa-exclamation-circle mr-2"></i><span id="custom-error-text"></span>
+                    </div>
+
+                    <form id="custom-order-form">
+                        <!-- Personal Information -->
+                        <div class="toggle-section">
+                            <div class="toggle-header" onclick="toggleSection(this)">
+                                <h4 class="font-bold text-gray-900 flex items-center gap-2">
+                                    <i class="fas fa-user text-brand-gold"></i>Your Information
+                                </h4>
+                                <i class="fas fa-chevron-down toggle-icon"></i>
+                            </div>
+                            <div class="toggle-content open">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="form-group">
+                                        <label class="form-label">
+                                            Full Name <span class="required-asterisk">*</span>
+                                        </label>
+                                        <input type="text" name="customer_name" required class="form-input w-full" placeholder="Your full name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">
+                                            Email <span class="required-asterisk">*</span>
+                                        </label>
+                                        <input type="email" name="customer_email" required class="form-input w-full" placeholder="your@email.com">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Phone</label>
+                                        <input type="tel" name="customer_phone" class="form-input w-full" placeholder="+1 (555) 123-4567">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">
+                                            Preferred Contact Method <span class="required-asterisk">*</span>
+                                        </label>
+                                        <select name="contact_method" required class="form-select w-full">
+                                            <option value="">Select method...</option>
+                                            <option value="email">Email</option>
+                                            <option value="phone">Phone</option>
+                                            <option value="both">Both</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Garment Details -->
+                        <div class="toggle-section">
+                            <div class="toggle-header" onclick="toggleSection(this)">
+                                <h4 class="font-bold text-gray-900 flex items-center gap-2">
+                                    <i class="fas fa-shirt text-brand-gold"></i>Garment Details
+                                </h4>
+                                <i class="fas fa-chevron-down toggle-icon"></i>
+                            </div>
+                            <div class="toggle-content open">
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        Garment Type <span class="required-asterisk">*</span>
+                                    </label>
+                                    <select name="garment_type" required class="form-select w-full">
+                                        <option value="">Select a type...</option>
+                                        <option value="dress">Dress</option>
+                                        <option value="shirt">Shirt</option>
+                                        <option value="pants">Pants</option>
+                                        <option value="skirt">Skirt</option>
+                                        <option value="jacket">Jacket</option>
+                                        <option value="blouse">Blouse</option>
+                                        <option value="suit">Suit</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        Garment Description <span class="required-asterisk">*</span>
+                                    </label>
+                                    <textarea name="garment_description" required class="form-textarea w-full" placeholder="Describe the garment you want: style, colors, patterns, fit, occasion, etc.&#10;&#10;Example: A flowing A-line dress with traditional African print patterns, with long sleeves and a midi length. Comfortable fit suitable for casual wear and professional settings."></textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        Size Information <span class="required-asterisk">*</span>
+                                    </label>
+                                    <textarea name="size_info" required class="form-textarea w-full" placeholder="Provide your measurements: chest, waist, hips, length, shoulder width, etc. Or specify your size (XS, S, M, L, XL, etc.)"></textarea>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Budget (Optional)</label>
+                                    <div class="flex gap-4">
+                                        <div class="flex-1">
+                                            <input type="number" name="budget_min" class="form-input w-full" placeholder="Min $" min="0" step="10">
+                                        </div>
+                                        <div class="flex-1">
+                                            <input type="number" name="budget_max" class="form-input w-full" placeholder="Max $" min="0" step="10">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Fabric Information -->
+                        <div class="toggle-section">
+                            <div class="toggle-header" onclick="toggleSection(this)">
+                                <h4 class="font-bold text-gray-900 flex items-center gap-2">
+                                    <i class="fas fa-bolt text-brand-gold"></i>Fabric Selection
+                                </h4>
+                                <i class="fas fa-chevron-down toggle-icon"></i>
+                            </div>
+                            <div class="toggle-content open">
+                                <label class="form-label mb-4">
+                                    Do you have your own fabric? <span class="required-asterisk">*</span>
+                                </label>
+                                <div class="space-y-3 mb-6">
+                                    <label class="checkbox-group">
+                                        <input type="radio" name="has_fabric" value="no" required checked onchange="toggleFabricSection()">
+                                        <span class="text-gray-900 font-medium">No - I'd like you to suggest fabric options</span>
+                                    </label>
+                                    <label class="checkbox-group">
+                                        <input type="radio" name="has_fabric" value="yes" required onchange="toggleFabricSection()">
+                                        <span class="text-gray-900 font-medium">Yes - I'm providing my own fabric</span>
+                                    </label>
+                                </div>
+
+                                <!-- We'll suggest fabric section (visible by default) -->
+                                <div id="suggest-fabric-section">
+                                    <label class="form-label">
+                                        Fabric Preferences
+                                    </label>
+                                    <div class="space-y-3">
+                                        <label class="checkbox-group cursor-pointer">
+                                            <input type="checkbox" name="fabric_pref" value="cotton" class="cursor-pointer">
+                                            <span>100% Cotton (breathable, comfortable)</span>
+                                        </label>
+                                        <label class="checkbox-group cursor-pointer">
+                                            <input type="checkbox" name="fabric_pref" value="linen" class="cursor-pointer">
+                                            <span>Linen Blend (elegant, breathable)</span>
+                                        </label>
+                                        <label class="checkbox-group cursor-pointer">
+                                            <input type="checkbox" name="fabric_pref" value="silk" class="cursor-pointer">
+                                            <span>Silk Blend (luxurious, smooth)</span>
+                                        </label>
+                                        <label class="checkbox-group cursor-pointer">
+                                            <input type="checkbox" name="fabric_pref" value="ankara" class="cursor-pointer">
+                                            <span>Ankara Print (traditional African prints)</span>
+                                        </label>
+                                        <label class="checkbox-group cursor-pointer">
+                                            <input type="checkbox" name="fabric_pref" value="kente" class="cursor-pointer">
+                                            <span>Kente Cloth (vibrant, cultural)</span>
+                                        </label>
+                                        <label class="checkbox-group cursor-pointer">
+                                            <input type="checkbox" name="fabric_pref" value="batik" class="cursor-pointer">
+                                            <span>Batik (unique patterns)</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-group mt-4">
+                                        <label class="form-label">Other fabric preferences</label>
+                                        <textarea name="fabric_notes" class="form-textarea w-full" placeholder="Any specific colors, patterns, textures, or other preferences..."></textarea>
+                                    </div>
+                                </div>
+
+                                <!-- Customer's own fabric section (hidden by default) -->
+                                <div id="own-fabric-section" class="hidden">
+                                    <div class="info-box mb-4">
+                                        <div class="info-box-title">Your Fabric</div>
+                                        <p class="text-sm text-gray-700">Please describe your fabric and let us know if you can provide a sample or photos.</p>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">
+                                            Fabric Description <span class="required-asterisk">*</span>
+                                        </label>
+                                        <textarea name="own_fabric_desc" class="form-textarea w-full" placeholder="Describe your fabric: type (cotton, linen, silk, etc), color, pattern, texture, weight, quantity available..."></textarea>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">
+                                            Estimated Fabric Quantity (yards/meters)
+                                        </label>
+                                        <input type="text" name="fabric_quantity" class="form-input w-full" placeholder="e.g., 3 yards, 2.5 meters">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Upload Fabric Photos or Samples</label>
+                                        <div class="file-upload-area" id="file-upload-area" onclick="document.getElementById('fabric-files').click()">
+                                            <div class="upload-icon">
+                                                <i class="fas fa-cloud-upload-alt"></i>
+                                            </div>
+                                            <p class="font-medium text-gray-900">Click to upload or drag and drop</p>
+                                            <p class="text-sm text-gray-600">PNG, JPG, GIF up to 5MB</p>
+                                        </div>
+                                        <input type="file" id="fabric-files" name="fabric_files" multiple accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+                                        <div id="file-list" class="mt-4"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Additional Details -->
+                        <div class="toggle-section">
+                            <div class="toggle-header" onclick="toggleSection(this)">
+                                <h4 class="font-bold text-gray-900 flex items-center gap-2">
+                                    <i class="fas fa-plus-circle text-brand-gold"></i>Additional Details
+                                </h4>
+                                <i class="fas fa-chevron-down toggle-icon"></i>
+                            </div>
+                            <div class="toggle-content">
+                                <div class="form-group">
+                                    <label class="form-label">Occasion/Purpose</label>
+                                    <select name="occasion" class="form-select w-full">
+                                        <option value="">Select an occasion...</option>
+                                        <option value="casual">Casual Wear</option>
+                                        <option value="business">Business/Professional</option>
+                                        <option value="formal">Formal Event</option>
+                                        <option value="wedding">Wedding</option>
+                                        <option value="festival">Festival/Celebration</option>
+                                        <option value="everyday">Everyday Wear</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Desired Completion Timeline</label>
+                                    <select name="timeline" class="form-select w-full">
+                                        <option value="">Select a timeframe...</option>
+                                        <option value="urgent">Urgent (2-3 weeks)</option>
+                                        <option value="standard">Standard (4-6 weeks)</option>
+                                        <option value="flexible">Flexible (7+ weeks)</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Any Special Requests or Notes</label>
+                                    <textarea name="special_requests" class="form-textarea w-full" placeholder="Embroidery details, lining preferences, button colors, accessories, etc."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Agreement & Submit -->
+                        <div class="mt-8">
+                            <label class="flex items-start gap-3 mb-6 cursor-pointer">
+                                <input type="checkbox" name="agree_terms" required class="mt-1" style="width: 18px; height: 18px; accent-color: #D4AF37;">
+                                <span class="text-sm text-gray-700">
+                                    I agree to receive a quote and understand that pricing will be provided after our design team reviews my requirements. <span class="required-asterisk">*</span>
+                                </span>
+                            </label>
+
+                            <button type="submit" class="btn-submit w-full md:w-auto text-lg">
+                                <i class="fas fa-paper-plane mr-2"></i>Request Custom Quote
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-300 mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <h3 class="font-bold text-white mb-4">AFRICHIC GARMENTS</h3>
+                    <p class="text-sm">Premium African print clothing and custom-made garments crafted with excellence.</p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white mb-4">Quick Links</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="shop.html" class="hover:text-brand-gold">Shop</a></li>
+                        <li><a href="contact.html" class="hover:text-brand-gold">Contact</a></li>
+                        <li><a href="#" class="hover:text-brand-gold">About Us</a></li>
+                        <li><a href="#" class="hover:text-brand-gold">Blog</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white mb-4">Customer Support</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="hover:text-brand-gold">FAQ</a></li>
+                        <li><a href="#" class="hover:text-brand-gold">Shipping Info</a></li>
+                        <li><a href="#" class="hover:text-brand-gold">Returns</a></li>
+                        <li><a href="#" class="hover:text-brand-gold">Size Guide</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white mb-4">Follow Us</h4>
+                    <div class="flex gap-4">
+                        <a href="#" class="hover:text-brand-gold"><i class="fab fa-facebook"></i></a>
+                        <a href="#" class="hover:text-brand-gold"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="hover:text-brand-gold"><i class="fab fa-twitter"></i></a>
+                        <a href="#" class="hover:text-brand-gold"><i class="fab fa-pinterest"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 pt-8 text-center text-sm">
+                <p>&copy; 2026 Africhic Garments. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Toggle sections
+        function toggleSection(header) {
+            const content = header.nextElementSibling;
+            const icon = header.querySelector('.toggle-icon');
+            
+            content.classList.toggle('open');
+            icon.classList.toggle('open');
+        }
+
+        // Toggle fabric section based on selection
+        function toggleFabricSection() {
+            const hasFabric = document.querySelector('input[name="has_fabric"]:checked').value;
+            const suggestSection = document.getElementById('suggest-fabric-section');
+            const ownSection = document.getElementById('own-fabric-section');
+            
+            if (hasFabric === 'yes') {
+                suggestSection.classList.add('hidden');
+                ownSection.classList.remove('hidden');
+            } else {
+                suggestSection.classList.remove('hidden');
+                ownSection.classList.add('hidden');
+            }
+        }
+
+        // File upload handling
+        document.getElementById('file-upload-area')?.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        });
+
+        document.getElementById('file-upload-area')?.addEventListener('dragleave', (e) => {
+            e.currentTarget.classList.remove('dragover');
+        });
+
+        document.getElementById('file-upload-area')?.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            document.getElementById('fabric-files').files = files;
+            handleFileSelect({ target: { files: files } });
+        });
+
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            const fileList = document.getElementById('file-list');
+            fileList.innerHTML = '';
+            
+            if (files.length > 0) {
+                const ul = document.createElement('ul');
+                ul.className = 'space-y-2';
+                
+                for (let file of files) {
+                    const li = document.createElement('li');
+                    li.className = 'flex items-center gap-2 text-sm text-gray-700 bg-green-50 p-3 rounded border border-green-200';
+                    li.innerHTML = `
+                        <i class="fas fa-check-circle text-green-600"></i>
+                        <span>${file.name}</span>
+                        <span class="text-gray-500">(${(file.size / 1024).toFixed(2)} KB)</span>
+                    `;
+                    ul.appendChild(li);
+                }
+                fileList.appendChild(ul);
+            }
+        }
+
+        // Contact Form Handler
+        document.getElementById('contact-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            
+            try {
+                // Simulate form submission (replace with actual API call)
+                console.log('Contact form submitted:', data);
+                
+                // Show success message
+                document.getElementById('contact-success').style.display = 'block';
+                document.getElementById('contact-error').style.display = 'none';
+                
+                // Reset form
+                e.target.reset();
+                
+                // Hide success message after 5 seconds
+                setTimeout(() => {
+                    document.getElementById('contact-success').style.display = 'none';
+                }, 5000);
+            } catch (error) {
+                document.getElementById('contact-error').style.display = 'block';
+                document.getElementById('error-text').textContent = error.message;
+            }
+        });
+
+        // Custom Order Form Handler
+        document.getElementById('custom-order-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            
+            // Collect checkbox arrays
+            const fabricPrefs = formData.getAll('fabric_pref');
+            data.fabric_preferences = fabricPrefs;
+            
+            try {
+                console.log('Custom order submitted:', data);
+                
+                // Show success message
+                document.getElementById('custom-success').style.display = 'block';
+                document.getElementById('custom-error').style.display = 'none';
+                
+                // Reset form
+                e.target.reset();
+                toggleFabricSection();
+                
+                // Hide success message after 5 seconds
+                setTimeout(() => {
+                    document.getElementById('custom-success').style.display = 'none';
+                }, 5000);
+            } catch (error) {
+                document.getElementById('custom-error').style.display = 'block';
+                document.getElementById('custom-error-text').textContent = error.message;
+            }
+        });
+    </script>
+</body>
+</html>

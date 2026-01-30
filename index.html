@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Africhic Garments | Modern African Print Boutique</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Production Configuration -->
+    <script src="production-config.js"></script>
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="firestore-sync.js"></script>
+    <script src="auth.js"></script>
+    <script src="session-timeout.js"></script>
+    <script src="user-profile.js"></script>
+    <script src="product-sync-manager.js"></script>
+    <script src="modern-navbar.js"></script>
+    <style>
+        /* Custom Branding Colors */
+        :root {
+            --brand-gold: #D4AF37;
+            --brand-earth: #3d2b1f;
+        }
+        .bg-brand-gold { background-color: #D4AF37; }
+        .text-brand-gold { color: #D4AF37; }
+        
+        /* User Profile Styling */
+        #user-profile-container {
+            position: relative;
+        }
+        
+        #profile-menu {
+            right: 0;
+            top: 100%;
+        }
+
+        /* Modern Navbar Styling */
+        .navbar {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-bottom: 1px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .nav-link {
+            position: relative;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #2c3e50;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .nav-link:hover {
+            color: var(--brand-gold);
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--brand-gold);
+            transition: width 0.3s ease;
+        }
+
+        .nav-link:hover::after {
+            width: 100%;
+        }
+
+        .nav-link-dropdown {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            min-width: 220px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            padding: 8px 0;
+            z-index: 100;
+            border: 1px solid #e0e0e0;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
+
+        .dropdown-menu.hidden {
+            display: none;
+        }
+
+        .dropdown-item {
+            display: block;
+            padding: 12px 20px;
+            color: #2c3e50;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .dropdown-item:hover {
+            background: #f8f9fa;
+            color: var(--brand-gold);
+            border-left-color: var(--brand-gold);
+            padding-left: 24px;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: #e0e0e0;
+            margin: 4px 0;
+        }
+
+        #mobile-menu {
+            animation: slideDown 0.3s ease;
+        }
+
+        #mobile-menu.hidden {
+            display: none;
+        }
+
+        .mobile-nav-link {
+            display: block;
+            padding: 12px 16px;
+            color: #2c3e50;
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            border-left: 4px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .mobile-nav-link:hover {
+            background: #f8f9fa;
+            color: var(--brand-gold);
+            border-left-color: var(--brand-gold);
+            padding-left: 20px;
+        }
+
+        .mobile-dropdown {
+            background: #f8f9fa;
+            padding: 0;
+            border-left: 4px solid var(--brand-gold);
+        }
+
+        .mobile-dropdown-item {
+            display: block;
+            padding: 10px 16px 10px 32px;
+            color: #555;
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            border-left: none;
+        }
+
+        .mobile-dropdown-item:hover {
+            background: #e8e8e8;
+            color: var(--brand-gold);
+            padding-left: 36px;
+        }
+
+        .nav-icon {
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-icon:hover {
+            color: var(--brand-gold);
+            transform: scale(1.1);
+        }
+
+        .brand-logo {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .brand-logo:hover {
+            transform: scale(1.05);
+        }
+
+        .brand-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: var(--brand-gold);
+        }
+
+        .brand-tagline {
+            font-size: 0.65rem;
+            letter-spacing: 1.5px;
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+
+        .cart-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--brand-gold);
+            color: white;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .fadeIn {
+            animation: slideDown 0.3s ease;
+        }
+
+        @media (max-width: 767px) {
+            .dropdown-menu {
+                position: static;
+                box-shadow: none;
+                border: none;
+                border-radius: 0;
+                background: #f8f9fa;
+                margin-top: 0;
+                padding: 0;
+                border-left: 4px solid var(--brand-gold);
+            }
+
+            .nav-link::after {
+                display: none;
+            }
+
+            .brand-name {
+                font-size: 1.25rem;
+            }
+
+            .brand-tagline {
+                font-size: 0.6rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+
+    <!-- Modern Navigation Bar -->
+    <nav class="navbar sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Brand Logo -->
+                <a href="index.html" class="brand-logo">
+                    <span class="brand-name">AFRICHIC</span>
+                    <span class="brand-tagline">GARMENTS</span>
+                </a>
+
+                <!-- Desktop Navigation Menu -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="index.html" class="nav-link">Home</a>
+
+                    <!-- Shop Dropdown -->
+                    <div class="nav-link-dropdown group">
+                        <a href="shop.html" class="nav-link flex items-center gap-1">
+                            Shop
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </a>
+                        <div class="dropdown-menu hidden group-hover:block absolute left-0 mt-0">
+                            <a href="shop.html" class="dropdown-item">
+                                <i class="fas fa-store mr-2"></i> All Products
+                            </a>
+                            <a href="shop.html?cat=ladies" class="dropdown-item">
+                                <i class="fas fa-female mr-2"></i> Women's Collection
+                            </a>
+                            <a href="shop.html?cat=men" class="dropdown-item">
+                                <i class="fas fa-male mr-2"></i> Men's Collection
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="shop.html?cat=new" class="dropdown-item">
+                                <i class="fas fa-sparkles mr-2"></i> New Arrivals
+                            </a>
+                        </div>
+                    </div>
+
+                    <a href="shop.html" class="nav-link">Collections</a>
+                    <a href="contact.html" class="nav-link">Contact</a>
+                </div>
+
+                <!-- Right Side Icons -->
+                <div class="flex items-center space-x-4 md:space-x-6">
+                    <!-- Search Icon -->
+                    <button class="nav-icon" title="Search">
+                        <i class="fas fa-search"></i>
+                    </button>
+
+                    <!-- Orders Icon -->
+                    <a href="orders.html" class="nav-icon relative" title="Order History">
+                        <i class="fas fa-receipt"></i>
+                    </a>
+
+                    <!-- User Profile Dropdown (Logged In) -->
+                    <div id="user-profile-dropdown" class="nav-link-dropdown hidden group">
+                        <button class="nav-icon flex items-center gap-2 group" title="Profile Menu">
+                            <div id="profile-avatar" class="hidden w-8 h-8 rounded-full bg-brand-gold text-white text-xs font-bold flex items-center justify-center">U</div>
+                            <i id="profile-icon" class="fas fa-user"></i>
+                            <i class="fas fa-chevron-down text-xs hidden md:inline"></i>
+                        </button>
+                        <div id="navbar-profile-menu" class="dropdown-menu hidden group-hover:block absolute right-0 mt-2 w-56">
+                            <div id="profile-header" class="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                                <p id="profile-name" class="font-semibold text-gray-900">User Name</p>
+                                <p id="profile-email" class="text-xs text-gray-600 truncate">user@email.com</p>
+                            </div>
+                            <a href="profile.html" class="dropdown-item">
+                                <i class="fas fa-user mr-2"></i> My Profile
+                            </a>
+                            <a href="orders.html" class="dropdown-item">
+                                <i class="fas fa-receipt mr-2"></i> Order History
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <button onclick="userProfileDisplay.logout()" class="w-full text-left dropdown-item text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-400">
+                                <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Profile Icon (Not Logged In) -->
+                    <a id="login-icon" href="login.html" class="nav-icon" title="Login">
+                        <i class="fas fa-user"></i>
+                    </a>
+
+                    <!-- Cart Icon -->
+                    <a href="cart.html" class="nav-icon relative" title="Shopping Cart">
+                        <i class="fas fa-shopping-bag"></i>
+                        <span class="cart-badge">0</span>
+                    </a>
+
+                    <!-- Mobile Menu Button -->
+                    <button id="mobile-menu-btn" class="md:hidden nav-icon" title="Menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Navigation Menu -->
+            <div id="mobile-menu" class="md:hidden hidden border-t border-gray-200 bg-white">
+                <a href="index.html" class="mobile-nav-link">
+                    <i class="fas fa-home mr-2"></i> Home
+                </a>
+
+                <!-- Mobile Shop Dropdown -->
+                <div class="nav-link-dropdown w-full">
+                    <a href="#" class="mobile-nav-link flex justify-between items-center" onclick="event.preventDefault();">
+                        <span><i class="fas fa-shopping-bag mr-2"></i> Shop</span>
+                        <i class="fas fa-chevron-down text-xs"></i>
+                    </a>
+                    <div class="dropdown-menu hidden">
+                        <a href="shop.html" class="mobile-dropdown-item">
+                            <i class="fas fa-store mr-2"></i> All Products
+                        </a>
+                        <a href="shop.html?cat=ladies" class="mobile-dropdown-item">
+                            <i class="fas fa-female mr-2"></i> Women's Collection
+                        </a>
+                        <a href="shop.html?cat=men" class="mobile-dropdown-item">
+                            <i class="fas fa-male mr-2"></i> Men's Collection
+                        </a>
+                        <a href="shop.html?cat=new" class="mobile-dropdown-item">
+                            <i class="fas fa-sparkles mr-2"></i> New Arrivals
+                        </a>
+                    </div>
+                </div>
+
+                <a href="shop.html" class="mobile-nav-link">
+                    <i class="fas fa-th-large mr-2"></i> Collections
+                </a>
+
+                <a href="contact.html" class="mobile-nav-link">
+                    <i class="fas fa-envelope mr-2"></i> Contact
+                </a>
+
+                <div class="border-t border-gray-200 mt-2 pt-2">
+                    <div id="mobile-user-section" class="hidden">
+                        <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                            <p id="mobile-profile-name" class="font-semibold text-gray-900">User Name</p>
+                            <p id="mobile-profile-email" class="text-xs text-gray-600 truncate">user@email.com</p>
+                        </div>
+                        <a href="profile.html" class="mobile-nav-link">
+                            <i class="fas fa-user mr-2"></i> My Profile
+                        </a>
+                        <a href="orders.html" class="mobile-nav-link">
+                            <i class="fas fa-receipt mr-2"></i> My Orders
+                        </a>
+                        <button onclick="userProfileDisplay.logout()" class="w-full text-left mobile-nav-link text-red-600 hover:bg-red-50">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                        </button>
+                    </div>
+                    <a id="mobile-login-link" href="login.html" class="mobile-nav-link">
+                        <i class="fas fa-user mr-2"></i> Login / Register
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <section class="relative h-[70vh] bg-gray-900 flex items-center text-white">
+        <div class="absolute inset-0 opacity-60">
+            <img src="https://images.unsplash.com/photo-1572804013427-4d7ca7268217?auto=format&fit=crop&q=80" alt="African Fashion" class="w-full h-full object-cover">
+        </div>
+        <div class="relative max-w-7xl mx-auto px-6">
+            <h2 class="text-5xl md:text-7xl font-serif mb-4">Vibrant Tradition, <br> Modern Style.</h2>
+            <p class="text-lg md:text-xl mb-8 max-w-md">Limited edition African print dresses, shirts, and sets tailored for the modern individual.</p>
+            <a href="shop.html" class="bg-brand-gold hover:bg-yellow-600 text-white px-8 py-4 rounded-none font-bold uppercase transition">Shop the Collection</a>
+        </div>
+    </section>
+
+    <section class="max-w-7xl mx-auto py-16 px-6">
+        <h3 class="text-3xl font-bold text-center mb-12">Browse by Category</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="group relative overflow-hidden h-96">
+                <img src="https://images.unsplash.com/photo-1589156229687-496a31ad1d1f?auto=format&fit=crop&q=80" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
+                    <a href="shop.html?cat=ladies" class="bg-white px-6 py-2 font-bold uppercase hover:bg-brand-gold hover:text-white transition">Ladies Wear</a>
+                </div>
+            </div>
+            <div class="group relative overflow-hidden h-96">
+                <img src="images/_mg_6260.jpg" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
+                    <a href="shop.html?cat=men" class="bg-white px-6 py-2 font-bold uppercase hover:bg-brand-gold hover:text-white transition">Men's Shirts</a>
+                </div>
+            </div>
+            <div class="group relative overflow-hidden h-96">
+                <img src="images/file_00000000e368622fa10f7839937b0354.png" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                <div class="absolute inset-0 bg-black/30 flex items-center justify-center">
+                    <a href="shop.html?cat=new" class="bg-white px-6 py-2 font-bold uppercase hover:bg-brand-gold hover:text-white transition">New Arrivals</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-zinc-900 text-white py-12">
+        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+                <h4 class="text-brand-gold font-bold mb-4 uppercase">Africhic Garments</h4>
+                <p class="text-gray-400">Handcrafted African print clothing for every occasion.</p>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4">Customer Care</h4>
+                <ul class="text-gray-400 space-y-2 hover-links">
+                    <li><a href="shop.html" class="hover:text-brand-gold transition">Shop All</a></li>
+                    <li><a href="shop.html?cat=ladies" class="hover:text-brand-gold transition">Ladies Collection</a></li>
+                    <li><a href="shop.html?cat=men" class="hover:text-brand-gold transition">Men's Collection</a></li>
+                    <li><a href="orders.html" class="hover:text-brand-gold transition">Order History</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4 uppercase text-sm">Contact</h4>
+                <p class="text-gray-400 text-sm mb-3">
+                    <a href="https://wa.me/27635617298" target="_blank" class="hover:text-brand-gold transition flex items-center gap-2">
+                        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                    </a>
+                </p>
+                <p class="text-gray-400 text-sm">Follow us on social media for updates and new collections.</p>
+            </div>
+        </div>
+        
+        <div class="max-w-7xl mx-auto px-6 border-t border-gray-700 mt-8 pt-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <p class="text-gray-500 text-sm">© 2024 Africhic Garments. All rights reserved.</p>
+                <div class="flex space-x-4 text-gray-500 mt-4 md:mt-0">
+                    <i class="fa-brands fa-cc-visa hover:text-brand-gold cursor-pointer transition"></i>
+                    <i class="fa-brands fa-cc-mastercard hover:text-brand-gold cursor-pointer transition"></i>
+                    <i class="fa-brands fa-cc-paypal hover:text-brand-gold cursor-pointer transition"></i>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <a href="https://wa.me/27635617298?text=Hello%20Africhic%20Garments,%20I%20have%20a%20question%20about%20an%20item..." 
+       target="_blank" 
+       class="fixed bottom-6 right-6 bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform z-[100] flex items-center justify-center">
+        <i class="fa-brands fa-whatsapp text-3xl"></i>
+        <span class="absolute right-full mr-3 bg-white text-gray-800 text-xs font-bold px-2 py-1 rounded shadow-sm whitespace-nowrap opacity-0 hover:opacity-100 transition-opacity">
+            Chat with us
+        </span>
+    </a>
+
+    <script src="homepage-config.js"></script>
+</body>
+</html>

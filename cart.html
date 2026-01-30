@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Bag | Africhic Garments</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://js.paystack.co/v1/inline.js"></script>
+    <!-- Firebase SDK (Compat) for sync -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="firestore-sync.js"></script>
+    <script src="auth.js"></script>
+    <script src="session-timeout.js"></script>
+    <script src="user-profile.js"></script>
+    <script src="sync-manager.js"></script>
+    <script src="modern-navbar.js"></script>
+    <style>
+        :root { --brand-gold: #D4AF37; }
+        .text-brand-gold { color: #D4AF37; }
+        .bg-brand-gold { background-color: #D4AF37; }
+        .payment-option input:checked + label { border-color: #D4AF37; background-color: #fefcf6; }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Modern Navigation Bar -->
+    <nav class="navbar sticky top-0 z-50" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); border-bottom: 1px solid #e0e0e0; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Brand Logo -->
+                <a href="index.html" style="display: flex; flex-direction: column; gap: 2px; text-decoration: none; transition: all 0.3s ease; color: #D4AF37;">
+                    <span style="font-size: 1.5rem; font-weight: 700; letter-spacing: 2px;">AFRICHIC</span>
+                    <span style="font-size: 0.65rem; letter-spacing: 1.5px; color: #7f8c8d; font-weight: 600;">GARMENTS</span>
+                </a>
+
+                <!-- Spacer -->
+                <div></div>
+
+                <!-- Right Side Icons -->
+                <div class="flex items-center space-x-4 md:space-x-6">
+                    <!-- Back to Shop -->
+                    <a href="shop.html" style="font-size: 0.95rem; color: #2c3e50; text-decoration: none; transition: all 0.3s ease;" class="hover:text-brand-gold">
+                        <i class="fas fa-arrow-left mr-1"></i> <span class="hidden sm:inline">Continue Shopping</span>
+                    </a>
+
+                    <!-- Cart Icon -->
+                    <a href="cart.html" style="font-size: 1.2rem; color: #2c3e50; transition: all 0.3s ease; position: relative;" class="hover:text-brand-gold">
+                        <i class="fas fa-shopping-bag"></i>
+                    </a>
+
+                    <!-- Mobile Menu Button -->
+                    <button id="mobile-menu-btn" class="md:hidden nav-icon" style="font-size: 1.2rem; transition: all 0.3s ease; color: #2c3e50;">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-6xl mx-auto px-4 py-10">
+        <h1 class="text-3xl font-bold mb-10">Your Shopping Bag</h1>
+
+        <div class="flex flex-col lg:flex-row gap-12">
+            <div class="lg:w-2/3">
+                <div id="cart-items-list" class="space-y-6">
+                    </div>
+                
+                <div id="empty-cart-msg" class="hidden text-center py-20">
+                    <i class="fa-solid fa-bag-shopping text-5xl text-gray-300 mb-4"></i>
+                    <p class="text-gray-500 text-lg">Your bag is empty.</p>
+                    <a href="shop.html" class="text-brand-gold font-bold mt-4 inline-block">Go to Shop</a>
+                </div>
+            </div>
+
+            <div class="lg:w-1/3">
+                <div class="bg-white p-6 shadow-md rounded-sm border border-gray-100">
+                    <h2 class="text-xl font-bold mb-6 border-b pb-4">Order Summary</h2>
+                    
+                    <div class="space-y-3 mb-6">
+                        <div class="flex justify-between text-gray-600">
+                            <span>Subtotal</span>
+                            <span id="subtotal">R 0.00</span>
+                        </div>
+                        <div class="flex justify-between text-gray-600">
+                            <span id="shipping-label">Shipping</span>
+                            <span id="shipping-cost">R 100.00</span>
+                        </div>
+                        <div class="flex justify-between font-bold text-xl pt-4 border-t">
+                            <span>Total</span>
+                            <span id="total-price" class="text-brand-gold">R 0.00</span>
+                        </div>
+                    </div>
+
+                    <h3 class="font-bold mb-4">Delivery Method</h3>
+                    <div class="space-y-3 mb-6">
+                        <div class="delivery-option">
+                            <input type="radio" name="delivery" id="home-delivery" class="hidden" checked onchange="updateDelivery()">
+                            <label for="home-delivery" class="flex items-center p-3 border rounded cursor-pointer hover:border-brand-gold transition">
+                                <span class="text-sm font-medium">Home Delivery (+R 100)</span>
+                                <i class="fa-solid fa-truck text-gray-400 ml-auto"></i>
+                            </label>
+                        </div>
+                        <div class="delivery-option">
+                            <input type="radio" name="delivery" id="store-pickup" class="hidden" onchange="updateDelivery()">
+                            <label for="store-pickup" class="flex items-center p-3 border rounded cursor-pointer hover:border-brand-gold transition">
+                                <span class="text-sm font-medium">Store Pickup (Free)</span>
+                                <i class="fa-solid fa-store text-gray-400 ml-auto"></i>
+                            </label>
+                        </div>
+                    </div>
+
+                    <h3 class="font-bold mb-4">Select Payment Method</h3>
+                    <div class="space-y-3 mb-8">
+                        <div class="payment-option">
+                            <input type="radio" name="pay" id="card" class="hidden" checked>
+                            <label for="card" class="flex items-center justify-between p-3 border rounded cursor-pointer hover:border-brand-gold transition">
+                                <span class="text-sm font-medium">Credit/Debit Card</span>
+                                <i class="fa-solid fa-credit-card text-gray-400"></i>
+                            </label>
+                        </div>
+                        <div class="payment-option">
+                            <input type="radio" name="pay" id="snap" class="hidden">
+                            <label for="snap" class="flex items-center justify-between p-3 border rounded cursor-pointer hover:border-brand-gold transition">
+                                <span class="text-sm font-medium">SnapScan / Scan to Pay</span>
+                                <i class="fa-solid fa-qrcode text-gray-400"></i>
+                            </label>
+                        </div>
+                        <div class="payment-option">
+                            <input type="radio" name="pay" id="eft" class="hidden">
+                            <label for="eft" class="flex items-center justify-between p-3 border rounded cursor-pointer hover:border-brand-gold transition">
+                                <span class="text-sm font-medium">EFT Transfer</span>
+                                <i class="fa-solid fa-building-columns text-gray-400"></i>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button onclick="goToCheckout()" class="w-full bg-brand-gold text-white py-4 font-bold uppercase tracking-widest hover:bg-yellow-600 transition shadow-lg">
+                        Proceed to Checkout
+                    </button>
+                    
+                    <div class="mt-6 flex justify-center space-x-4 grayscale opacity-50 text-2xl">
+                        <i class="fa-brands fa-cc-visa"></i>
+                        <i class="fa-brands fa-cc-mastercard"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Require authentication to access shopping bag
+        function requireAuthForCart() {
+            // Wait for auth to initialize
+            const checkAuth = setInterval(() => {
+                if (authManager && authManager.initialized) {
+                    clearInterval(checkAuth);
+                    
+                    if (!authManager.isLoggedIn()) {
+                        // Redirect to login with return URL
+                        const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location.href = `login.html?redirect=${returnUrl}&message=login-required`;
+                    } else {
+                        // User is authenticated, proceed normally
+                        console.log('✓ User authenticated - loading cart');
+                        loadCart();
+                    }
+                }
+            }, 100);
+
+            // Timeout after 5 seconds - if auth not ready, still show login
+            setTimeout(() => {
+                if (!authManager || !authManager.initialized) {
+                    console.log('⚠ Auth not ready - redirecting to login');
+                    const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+                    window.location.href = `login.html?redirect=${returnUrl}&message=login-required`;
+                }
+            }, 5000);
+        }
+
+        function loadCart() {
+            const cartItems = JSON.parse(localStorage.getItem('africhic-cart')) || [];
+            const container = document.getElementById('cart-items-list');
+            const emptyMsg = document.getElementById('empty-cart-msg');
+            
+            if (cartItems.length === 0) {
+                emptyMsg.classList.remove('hidden');
+                return;
+            }
+
+            container.innerHTML = '';
+            let subtotal = 0;
+
+            cartItems.forEach((item, index) => {
+                subtotal += item.price;
+                container.innerHTML += `
+                    <div class="flex items-center bg-white p-4 shadow-sm border border-gray-100">
+                        <div class="w-20 h-24 bg-gray-200 rounded-sm overflow-hidden">
+                            <img src="${item.image || 'https://via.placeholder.com/150'}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/150'">
+                        </div>
+                        <div class="ml-6 flex-grow">
+                            <h3 class="font-bold text-gray-800">${item.name}</h3>
+                            <p class="text-sm text-gray-600 mt-1">
+                                <strong>Size:</strong> ${item.size || 'One Size'} | 
+                                <strong>Colour:</strong> ${item.colour || 'Default'}
+                            </p>
+                            <button onclick="removeItem(${index})" class="text-xs text-red-400 mt-2 hover:underline">Remove</button>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-lg font-bold text-gray-800">R ${item.price.toFixed(2)}</div>
+                            <div class="text-xs text-gray-500 mt-1">Qty: 1</div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            updateCartTotals();
+        }
+
+        function updateDelivery() {
+            updateCartTotals();
+        }
+
+        function updateCartTotals() {
+            const cartItems = JSON.parse(localStorage.getItem('africhic-cart')) || [];
+            let subtotal = cartItems.reduce((sum, item) => sum + item.price, 0);
+            
+            const isPickup = document.getElementById('store-pickup').checked;
+            const shippingCost = isPickup ? 0 : 100;
+            const total = subtotal + shippingCost;
+
+            document.getElementById('subtotal').innerText = `R ${subtotal.toFixed(2)}`;
+            document.getElementById('shipping-cost').innerText = `R ${shippingCost.toFixed(2)}`;
+            document.getElementById('total-price').innerText = `R ${total.toFixed(2)}`;
+        }
+
+        function removeItem(index) {
+            let cartItems = JSON.parse(localStorage.getItem('africhic-cart')) || [];
+            cartItems.splice(index, 1);
+            localStorage.setItem('africhic-cart', JSON.stringify(cartItems));
+            loadCart();
+        }
+
+        function goToCheckout() {
+            const cartItems = JSON.parse(localStorage.getItem('africhic-cart')) || [];
+            if (cartItems.length === 0) {
+                alert("Your bag is empty!");
+                return;
+            }
+            window.location.href = 'checkout.html';
+        }
+
+        function saveToHistory(newOrder) {
+            let history = JSON.parse(localStorage.getItem('africhic-history')) || [];
+            history.push({
+                date: new Date().toLocaleDateString(),
+                items: newOrder,
+                total: newOrder.reduce((sum, item) => sum + item.price, 0) + 100
+            });
+            localStorage.setItem('africhic-history', JSON.stringify(history));
+        }
+
+        // Initialize cart page with authentication check
+        requireAuthForCart();
+    </script>
+
+    <footer class="bg-zinc-900 text-white py-12 mt-12">
+        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+                <h4 class="text-brand-gold font-bold mb-4 uppercase">Africhic Garments</h4>
+                <p class="text-gray-400 text-sm">Handcrafted African print clothing for every occasion. Quality fabrics, exceptional designs.</p>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4 uppercase text-sm">Shop</h4>
+                <ul class="text-gray-400 space-y-2 text-sm">
+                    <li><a href="shop.html" class="hover:text-brand-gold transition">Shop All</a></li>
+                    <li><a href="shop.html?cat=ladies" class="hover:text-brand-gold transition">Ladies Collection</a></li>
+                    <li><a href="shop.html?cat=men" class="hover:text-brand-gold transition">Men's Collection</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4 uppercase text-sm">Account</h4>
+                <ul class="text-gray-400 space-y-2 text-sm">
+                    <li><a href="orders.html" class="hover:text-brand-gold transition">Order History</a></li>
+                    <li><a href="cart.html" class="hover:text-brand-gold transition">Shopping Cart</a></li>
+                    <li><a href="login.html" class="hover:text-brand-gold transition">Login</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="font-bold mb-4 uppercase text-sm">Contact</h4>
+                <p class="text-gray-400 text-sm mb-3">
+                    <a href="https://wa.me/27635617298" target="_blank" class="hover:text-brand-gold transition flex items-center gap-2">
+                        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                    </a>
+                </p>
+                <p class="text-gray-400 text-sm">Follow us on social media for updates and new collections.</p>
+            </div>
+        </div>
+        
+        <div class="max-w-7xl mx-auto px-6 border-t border-gray-700 mt-8 pt-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <p class="text-gray-500 text-sm">© 2024 Africhic Garments. All rights reserved.</p>
+                <div class="flex space-x-4 text-gray-500 mt-4 md:mt-0">
+                    <i class="fa-brands fa-cc-visa hover:text-brand-gold cursor-pointer transition"></i>
+                    <i class="fa-brands fa-cc-mastercard hover:text-brand-gold cursor-pointer transition"></i>
+                    <i class="fa-brands fa-cc-paypal hover:text-brand-gold cursor-pointer transition"></i>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
