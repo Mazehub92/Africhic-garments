@@ -180,10 +180,16 @@ async function loadInventoryFromFirebase() {
             }
         }
 
-        // THIRD: Empty inventory (admin hasn't added products yet)
-        console.log('⚠ No products available');
-        inventory = [];
-        return false;
+        // THIRD: Fall back to default inventory (for demo purposes)
+        console.log('✓ Using default inventory for demo purposes');
+        inventory = defaultInventory;
+        localStorage.setItem('africhic-products', JSON.stringify(defaultInventory));
+        
+        // Trigger callback
+        if (typeof displayProductsCallback === 'function') {
+            displayProductsCallback(defaultInventory);
+        }
+        return true;
 
     } catch (error) {
         console.error("Error loading products:", error);

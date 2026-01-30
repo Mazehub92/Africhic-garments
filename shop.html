@@ -513,6 +513,37 @@
         let allProducts = [];
         let isLoading = false;
 
+        // Initialize with default inventory if available
+        function initializeInventory() {
+            // Check if inventory was already loaded
+            if (inventory && inventory.length > 0) {
+                console.log('✓ Inventory already loaded:', inventory.length, 'products');
+                return;
+            }
+            
+            // Check localStorage
+            const cached = localStorage.getItem('africhic-products');
+            if (cached) {
+                try {
+                    inventory = JSON.parse(cached);
+                    console.log('✓ Loaded from cache:', inventory.length, 'products');
+                    return;
+                } catch (e) {
+                    console.error('Error loading from cache:', e);
+                }
+            }
+            
+            // Fall back to default inventory
+            if (typeof defaultInventory !== 'undefined' && defaultInventory.length > 0) {
+                inventory = defaultInventory;
+                localStorage.setItem('africhic-products', JSON.stringify(defaultInventory));
+                console.log('✓ Using default inventory:', inventory.length, 'products');
+            } else {
+                console.warn('⚠ No inventory available');
+                inventory = [];
+            }
+        }
+
         // Get category from URL parameters
         function getUrlCategory() {
             const params = new URLSearchParams(window.location.search);
@@ -879,9 +910,12 @@
         // Initialize real-time sync
         setupProductRealTimeListener();
         
+        // Initialize inventory immediately
+        initializeInventory();
+        
         // Load products immediately
         loadInventoryFromFirebase().then(success => {
-            if (success) {
+            if (success || inventory.length > 0) {
                 populateCategories();
                 displayProducts();
             }
